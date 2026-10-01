@@ -1,0 +1,22 @@
+[project]
+name = "mercury"
+version = "0.1.0"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.141.1",
+    "h3>=4.5.0",
+    "httpx>=0.28.1",
+    "psycopg[binary]>=3.2",
+    "python-dotenv>=1.2.3",
+    "sqlalchemy>=2.0",
+    "uvicorn>=0.53.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests/server"]
+pythonpath = ["server"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]

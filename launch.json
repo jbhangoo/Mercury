@@ -1,0 +1,32 @@
+{
+    "version": "0.2.0",
+
+    "configurations": [
+        {
+            "name": "Mercury Data Server",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/server/main.py",
+            "cwd": "${workspaceFolder}/server",
+            "console": "integratedTerminal"
+        },
+
+        {
+            "name": "Planet Surface Client",
+            "type": "pwa-chrome",
+            "request": "launch",
+            "url": "http://localhost:5173",
+            "webRoot": "${workspaceFolder}/client"
+        }
+    ],
+
+    "compounds": [
+        {
+            "name": "Mercury Client and Server",
+            "configurations": [
+                "Mercury Data Server",
+                "Planet Surface Client"
+            ]
+        }
+    ]
+}

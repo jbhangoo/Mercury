@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mercury Projection Map</title>
+
+    <style>
+        body { margin: 0; padding: 0; font-family: sans-serif; background-color: #0b0c10; color: #fff; }
+        #map-container { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; }
+
+        #detail-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 300px;
+            background: rgba(20, 24, 33, 0.9);
+            border: 1px solid #45424e;
+            border-radius: 8px;
+            padding: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            z-index: 10;
+        }
+        .metric-value { font-size: 1.4em; font-weight: bold; color: #64ffda; }
+        .hint { color: #8892b0; font-size: 0.9em; }
+    </style>
+</head>
+<body>
+
+<div id="map-container"></div>
+
+<div id="detail-panel">
+    <h3>Point Details</h3>
+    <div id="panel-content">
+        <p class="hint">Hover over or click a point to view details.</p>
+    </div>
+</div>
+
+<!-- Vite module entry point -->
+<script type="module" src="/src/app.ts"></script>
+</body>
+</html>

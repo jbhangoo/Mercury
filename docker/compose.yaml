@@ -1,0 +1,57 @@
+services:
+  db:
+    image: database-img
+    build: ./database
+    container_name: database
+    environment:
+      POSTGRES_DB: ${MERCURY_DB_NAME:-mercury}
+      POSTGRES_USER: ${MERCURY_DB_USER:-mercury}
+      POSTGRES_PASSWORD: ${MERCURY_DB_PASSWORD:-mercury_dev_password}
+    ports:
+      - "${MERCURY_DB_PUBLISHED_PORT:-5433}:5432"
+    volumes:
+      - mercury-db-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  server:
+    image: server-img
+    build: ./server
+    container_name: server
+    environment:
+      DATABASE_URL: postgresql+psycopg://${MERCURY_DB_USER:-mercury}:${MERCURY_DB_PASSWORD:-mercury_dev_password}@db:5432/${MERCURY_DB_NAME:-mercury}
+      USE_DATABASE: "1"
+      DEBUG: "0"
+      CORS_ORIGINS: http://localhost:8080
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=2)
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  client:
+    image: client-img
+    build: ./client
+    container_name: client
+    ports:
+      - "8080:80"
+    depends_on:
+      server:
+        condition: service_healthy
+
+volumes:
+  mercury-db-data:

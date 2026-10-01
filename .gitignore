@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+.pytest_cache/
+.venv/
+
+# Node / Vite
+node_modules/
+/client/dist/
+out-tsc/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+/.pnp
+.pnp.js
+
+# Local tooling
+.vscode/
+
+# Local environment files
+.env
+.env.*
+!.env.example

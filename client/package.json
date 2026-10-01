@@ -1,0 +1,28 @@
+{
+  "name": "mercury-map",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "test": "vitest run --config vitest.config.ts"
+  },
+  "dependencies": {
+    "@deck.gl/core": "^9.4.0",
+    "@deck.gl/geo-layers": "^9.4.0",
+    "@deck.gl/layers": "^9.4.0",
+    "@loaders.gl/core": "^4.4.3",
+    "@loaders.gl/images": "^4.4.3",
+    "@math.gl/core": "4.1.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vite": "^8.3.1",
+    "vitest": "^5.0.2"
+  },
+  "allowScripts": {
+    "esbuild@0.21.5": true
+  }
+}
