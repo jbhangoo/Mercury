@@ -13,8 +13,8 @@ yarn-error.log*
 /.pnp
 .pnp.js
 
-# Data files are stored in the xrs_pds directory, which is ignored by git.
-/xrs_pds/
+# Data files are stored in database/xrs_pds and are kept out of git.
+/database/xrs_pds/
 
 # Local tooling
 .vscode/
