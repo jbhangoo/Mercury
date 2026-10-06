@@ -1,3 +1,6 @@
+# This file lists the packages that are required to run the server in the "pip" package manager.  --- IGNORE ---
+# This project assume uv, so instead of this file, check the "pyproject.toml" file for the actual dependencies.  --- IGNORE ---
+
 fastapi
 uvicorn
 httpx>=0.28.1
@@ -6,3 +9,4 @@ h3
 SQLAlchemy>=2.0
 psycopg[binary]>=3.2
 requests
+numpy

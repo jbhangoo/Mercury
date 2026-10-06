@@ -6,14 +6,13 @@
 \set ON_ERROR_STOP on
 \c mercury
 
--- Drop explicit and constraint-generated indexes before dropping their tables.
-DROP INDEX IF EXISTS xrs_observed_at_idx;
-DROP INDEX IF EXISTS xrs_h3_id;
-DROP INDEX IF EXISTS xrs_location_gist_idx;
-DROP INDEX IF EXISTS xrs_location_geography_idx;
-DROP INDEX IF EXISTS xrs_source_idx;
-DROP INDEX IF EXISTS xrs_pkey;
-DROP INDEX IF EXISTS xrs_observed_at_key;
+-- Drop the explicit indexes created in DB_Create.sql.
+DROP INDEX IF EXISTS xrs_footprint_gist_idx  ;
+DROP INDEX IF EXISTS xrs_center_gist_idx  ;
+DROP INDEX IF EXISTS xrs_observed_start_idx  ;
+DROP INDEX IF EXISTS xrs_met_idx   ;
+DROP INDEX IF EXISTS xrs_flare_idx    ;
+DROP INDEX IF EXISTS xrs_solar_intensity_idx;
 
--- CASCADE also removes owned sequences and any remaining dependent objects.
+-- CASCADE removes constraint-backed indexes, owned sequences, and remaining dependents.
 DROP TABLE IF EXISTS xrs CASCADE;

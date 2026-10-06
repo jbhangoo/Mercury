@@ -2,14 +2,12 @@
 
 FastAPI backend for the Mercury imagery client. It proxies Mercury Trek
 tiles through `/api/mercury-tile` and returns XRS details for clicked
-coordinates through `/api/xrs`. XRS details currently use mock data.
+coordinates through `/api/xrs`, using observations loaded into PostgreSQL.
 
 ## Technologies
 
 ### Backend
-Postgres, StackBuilder, pgadmin + PostGIS [Initial password = derfloki, port=5432]
-pyscopg3
-SQLAlchemy
+PostgreSQL with PostGIS and SQLAlchemy Core (psycopg 3 driver)
 
 ### Server
 Python
@@ -25,22 +23,43 @@ This was built using uv, Docker and uvicorn in development
 
 ## How to set up data
 
-### PostgresQL Install
-
 ### Create PostGIS database
+
+- Install PostgreSQL
+- Create `mercury` database
+- Create PostGIS extension in database
 
 ### Load with initial data
 
-If you don't have Mercury surface data, generate mocked data:
-cd database
+Load the XRS calibrated data with `database/CDR_Loader.py`. The `/api/xrs`
+endpoint can return spatial results after footprint polygons have been loaded
+into the `xrs.footprint` column.
 
+#### Messenger XRS
+
+To download bulk files via curl, wget, or Python scripts:
+
+    XRS Calibrated Data (CDR):
+    [https://pds-geosciences.wustl.edu/messenger/mess-m-xrs-3-cdr-v1/](https://pds-geosciences.wustl.edu/messenger/mess-m-xrs-3-cdr-v1/)
+
+    XRS Footprints & Map Products (RDR/DDR):
+    [https://pds-geosciences.wustl.edu/messenger/mess-m-xrs-5-rdr-v1/](https://pds-geosciences.wustl.edu/messenger/mess-m-xrs-5-rdr-v1/)
+
+Alternatively, the ODE website has a UI to access the PDS directory trees interactively. You can fill a "cart" then download datasets of interest.
+
+#### Bepicolombo
 XRS data will get updated as the mission progresses
 but a bulk loader should be built for existing data or data from other sources
 
 ## How Client runs
 
 The client requests imagery tiles through the server and sends clicked
-latitude/longitude coordinates to the XRS endpoint.
+latitude/longitude coordinates to `/api/xrs`. The endpoint returns the
+observations whose loaded `footprint` covers that point in Mercury's
+project SRID 910001. Records without footprints are not spatially matched.
+The response contains an `observations` array of database-backed CDR fields
+and spectra, plus `has_more`; `limit` defaults to 100 and can be set from 1
+to 500. If no footprints cover a point, the array is empty.
 
 ## Plan Idea
 
@@ -66,8 +85,7 @@ Mercury/server
 └── app/
    ├── __init__.py          # FastAPI app factory, CORS setup
     ├── config.py            # env-var-backed settings
-    ├── db.py                # PostGIS access — STUB, raises NotImplementedError
-    ├── mock_data.py          # generates placeholder grid/cell data
+    ├── database.py          # shared SQLAlchemy engine access
     └── routes/
       ├── __init__.py       # registers routers
       ├── xrs.py             # GET /api/xrs?lon=<float>&lat=<float>
@@ -165,15 +183,12 @@ The database volume is retained; adding `-v` also deletes its data.
 ## PostGIS data access
 
 The database layer uses SQLAlchemy Core with the psycopg 3 driver. Copy
-`.env.example` to `.env`, set `DATABASE_URL`, and set `USE_DATABASE=1`.
+`.env.example` to `.env` and set `DATABASE_URL`.
 
-The geometry column should contain cell polygons in SRID 4326. The GiST index
-allows PostGIS to apply the bounding-box filter before returning rows. Keep
-`USE_DATABASE=0` while loading or developing against mock data.
+The XRS `footprint` column should contain polygons in SRID 910001. The GiST
+index allows PostGIS to apply a spatial filter before returning observations.
 
-## What's stubbed on purpose
+## Operational notes
 
-- **Endpoints**: `/api/xrs`. Add more routers under
-   `app/routes/` and register them in `app/routes/__init__.py` as needed.
-- **No auth or rate limiting** on the API endpoints; revisit this before
+- **No auth or rate limiting** is configured on the API endpoints; revisit this before
    exposing the server beyond local development.

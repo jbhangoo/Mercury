@@ -11,8 +11,14 @@ import sys
 from pathlib import Path
 
 from dotenv import load_dotenv
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
+
+REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
+if str(REPOSITORY_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPOSITORY_ROOT))
+
+from database.sqlalchemy_db import create_database_engine
 
 
 def _connection_failure(error: SQLAlchemyError, database: str, username: str) -> tuple[str, str]:
@@ -47,9 +53,8 @@ def main() -> int:
         if not args.quiet:
             print(message)
 
-    repository_root = Path(__file__).resolve().parents[2]
-    load_dotenv(repository_root / ".env")
-    load_dotenv(repository_root / "server" / ".env", override=False)
+    load_dotenv(REPOSITORY_ROOT / ".env")
+    load_dotenv(REPOSITORY_ROOT / "server" / ".env", override=False)
     database_url = args.database_url or os.environ.get("DATABASE_URL")
     if not database_url:
         print(
@@ -60,7 +65,7 @@ def main() -> int:
         return 2
 
     try:
-        engine = create_engine(database_url)
+        engine = create_database_engine(database_url)
     except SQLAlchemyError as error:
         print(f"Database check failed at [DATABASE_URL]: {error}", file=sys.stderr)
         return 1

@@ -7,8 +7,6 @@ class Config:
     """
 
     DEBUG: bool = os.environ.get("DEBUG", os.environ.get("FLASK_DEBUG", "1")) == "1"
-    USE_DATABASE: bool = os.environ.get("USE_DATABASE", "0") == "1"
-
     DATABASE_URL: str = os.environ.get(
         "DATABASE_URL",
         "postgresql+psycopg://mercury_user:mercury_pass@localhost:5432/mercury",

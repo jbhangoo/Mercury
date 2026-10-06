@@ -1,0 +1,2268 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+
+<?xml-model href="https://pds.nasa.gov/pds4/pds/v1/PDS4_PDS_1A10.sch"
+  schematypens="http://purl.oclc.org/dsdl/schematron"?>
+<?xml-model href="https://pds.nasa.gov/pds4/mission/mess/v1/PDS4_MESS_1B00_1020.sch"
+  schematypens="http://purl.oclc.org/dsdl/schematron"?>
+
+<Product_Observational xmlns="http://pds.nasa.gov/pds4/pds/v1" 
+    xmlns:mess="http://pds.nasa.gov/pds4/mission/mess/v1" 
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+    xsi:schemaLocation="http://pds.nasa.gov/pds4/pds/v1 https://pds.nasa.gov/pds4/pds/v1/PDS4_PDS_1A10.xsd      http://pds.nasa.gov/pds4/mission/mess/v1 https://pds.nasa.gov/pds4/mission/mess/v1/PDS4_MESS_1B00_1020.xsd">
+  <Identification_Area>
+    <logical_identifier>urn:nasa:pds:mess_xrs_calibrated:data_cdr:xrscdr2013122_dat</logical_identifier>
+    <version_id>1.0</version_id>
+    <title>MESSENGER XRS Calibrated product: xrscdr2013122_dat</title>
+    <information_model_version>1.10.1.0</information_model_version>
+    <product_class>Product_Observational</product_class>
+    <Modification_History>
+      <Modification_Detail>
+        <modification_date>2018-06-08</modification_date>
+        <version_id>1.0</version_id>
+        <description>PDS4 migrated product.</description>
+      </Modification_Detail>
+    </Modification_History>
+  </Identification_Area>
+  <Observation_Area>
+    <Time_Coordinates>
+      <start_date_time>2013-05-02T00:02:42.352Z</start_date_time>
+      <stop_date_time>2013-05-02T23:59:22.354Z</stop_date_time>
+    </Time_Coordinates>
+    <Investigation_Area>
+      <name>MESSENGER</name>
+      <type>Mission</type>
+      <Internal_Reference>
+        <lid_reference>urn:nasa:pds:context:investigation:mission.messenger</lid_reference>
+        <reference_type>data_to_investigation</reference_type>
+      </Internal_Reference>
+    </Investigation_Area>
+    <Observing_System>
+      <Observing_System_Component>
+        <name>MESSENGER</name>
+        <type>Spacecraft</type>
+        <Internal_Reference>
+          <lid_reference>urn:nasa:pds:context:instrument_host:spacecraft.mess</lid_reference>
+          <reference_type>is_instrument_host</reference_type>
+        </Internal_Reference>
+      </Observing_System_Component>
+      <Observing_System_Component>
+        <name>X-Ray Spectrometer</name>
+        <type>Instrument</type>
+        <Internal_Reference>
+          <lid_reference>urn:nasa:pds:context:instrument:xrs.mess</lid_reference>
+          <reference_type>is_instrument</reference_type>
+        </Internal_Reference>
+      </Observing_System_Component>
+    </Observing_System>
+    <Target_Identification>
+      <name>Mercury</name>
+      <type>Planet</type>
+      <Internal_Reference>
+        <lid_reference>urn:nasa:pds:context:target:planet.mercury</lid_reference>
+        <reference_type>data_to_target</reference_type>
+      </Internal_Reference>
+    </Target_Identification>
+    <Mission_Area>
+      <mess:MESSENGER>
+        <mess:mission_phase_name>Mercury Orbit Year 3</mess:mission_phase_name>
+        <mess:spacecraft_clock_start_count>2/009776962</mess:spacecraft_clock_start_count>
+        <mess:spacecraft_clock_stop_count>2/009863162</mess:spacecraft_clock_stop_count>
+        <mess:standard_data_product_id>xrscdr</mess:standard_data_product_id>
+        <mess:software_name>ua_lpl_edr2cdr</mess:software_name>
+        <mess:software_version_id>1.0</mess:software_version_id>
+      </mess:MESSENGER>
+    </Mission_Area>
+  </Observation_Area>
+  <File_Area_Observational>
+    <File>
+      <file_name>xrscdr2013122.dat</file_name>
+      <creation_date_time>2015-09-21T10:17:00Z</creation_date_time>
+    </File>
+    <Table_Binary>
+      <offset unit="byte">0</offset>
+      <records>552</records>
+      <description>
+	    This table contains X-ray spectra and associated instrument
+        parameters, as observed by the MESSENGER X-Ray Spectrometer (XRS).
+        Detailed descriptions for the parameters defined below are contained
+        in the XRS CDR SIS document.
+	  </description>
+      <Record_Binary>
+        <fields>226</fields>
+        <groups>5</groups>
+        <record_length unit="byte">2755</record_length>
+        <Field_Binary>
+          <name>met</name>
+          <field_number>1</field_number>
+          <field_location unit="byte">1</field_location>
+          <data_type>UnsignedMSB4</data_type>
+          <field_length unit="byte">4</field_length>
+          <unit>seconds</unit>
+          <description>Time tag in seconds, 0 = MESSENGER launch.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>orbit_number</name>
+          <field_number>2</field_number>
+          <field_location unit="byte">5</field_location>
+          <data_type>UnsignedMSB4</data_type>
+          <field_length unit="byte">4</field_length>
+          <description>
+		        Orbit number is a unique identifier for a
+            given orbit of the MESSENGER spacecraft around Mercury.
+            Orbit number is defined as starting at apoherm and is
+            calculated using the MET value and the appropriate SPICE
+            kernels. Orbit numbering does not start until MESSENGER
+            performs the Mercury orbit insertion. Until that time the
+            value for orbit number is 0.
+		      </description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>status_interval</name>
+          <field_number>3</field_number>
+          <field_location unit="byte">9</field_location>
+          <data_type>UnsignedMSB2</data_type>
+          <field_length unit="byte">2</field_length>
+          <unit>seconds</unit>
+          <description>Time period (in seconds) between status packets.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>sc_range</name>
+          <field_number>4</field_number>
+          <field_location unit="byte">11</field_location>
+          <data_type>IEEE754MSBDouble</data_type>
+          <field_length unit="byte">8</field_length>
+          <unit>kilometers</unit>
+          <description>+Z range to Mercury surface, smoothed.
+            -1 means it can not be calculated.</description>
+          <Special_Constants>
+            <unknown_constant>-1</unknown_constant>
+          </Special_Constants>
+        </Field_Binary>
+        <Field_Binary>
+          <name>sc_angle</name>
+          <field_number>5</field_number>
+          <field_location unit="byte">19</field_location>
+          <data_type>IEEE754MSBDouble</data_type>
+          <field_length unit="byte">8</field_length>
+          <unit>degrees</unit>
+          <description>+Z angle to Mercury surface, smoothed.
+            -1 means it can not be calculated.</description>
+          <Special_Constants>
+            <unknown_constant>-1</unknown_constant>
+          </Special_Constants>
+        </Field_Binary>
+        <Field_Binary>
+          <name>data_quality</name>
+          <field_number>6</field_number>
+          <field_location unit="byte">27</field_location>
+          <data_type>UnsignedMSB4</data_type>
+          <field_length unit="byte">4</field_length>
+          <description>
+		        Integer representation of a 32-bit array. Each bit
+            represents a data quality flag. Currently only the least
+            significant bit is being used. Other bit positions will be
+            designated during the course of the mission as more data quality
+            parameters are identified by the instrument team. =1, the actual
+            data length in bytes does not match the reported length. =0,
+            actual data length in bytes matches reported length.
+		      </description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>sw_version</name>
+          <field_number>7</field_number>
+          <field_location unit="byte">31</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>Software version number.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>alarm_id</name>
+          <field_number>8</field_number>
+          <field_location unit="byte">32</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>The identifier for the last XRS alarm, 0 for no
+            alarm and non-zero for a long list of various parameters out
+            of range.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>alarm_type</name>
+          <field_number>9</field_number>
+          <field_location unit="byte">33</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>Latest alarm type. =0 persistent, =1 transient.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>alarm_count</name>
+          <field_number>10</field_number>
+          <field_location unit="byte">34</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>Count of number of alarms.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>cmd_executed</name>
+          <field_number>11</field_number>
+          <field_location unit="byte">35</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>Number of commands executed.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>cmd_rejected</name>
+          <field_number>12</field_number>
+          <field_location unit="byte">36</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>Number of commands rejected.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>monitor_response</name>
+          <field_number>13</field_number>
+          <field_location unit="byte">37</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>Monitor response. =0 disabled, =1 enabled.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>mem_write_enable</name>
+          <field_number>14</field_number>
+          <field_location unit="byte">38</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>Memory write enable. =0 disabled, =1 enabled.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>macro_learn_mode</name>
+          <field_number>15</field_number>
+          <field_location unit="byte">39</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>Macro learn mode. =0 not learning, =1 learning.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>spare</name>
+          <field_number>16</field_number>
+          <field_location unit="byte">40</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>Spare column for possible future use.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>science_record_version</name>
+          <field_number>17</field_number>
+          <field_location unit="byte">41</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>Version of science packet format.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>macro_id</name>
+          <field_number>18</field_number>
+          <field_location unit="byte">42</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>ID of most recent macro executed.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>macros_rejected</name>
+          <field_number>19</field_number>
+          <field_location unit="byte">43</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>Number of macro commands rejected.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>macros_executed</name>
+          <field_number>20</field_number>
+          <field_location unit="byte">44</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>Number of macro commands executed.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>macro_blocks</name>
+          <field_number>21</field_number>
+          <field_location unit="byte">45</field_location>
+          <data_type>UnsignedMSB2</data_type>
+          <field_length unit="byte">2</field_length>
+          <description>Number of macro blocks free.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc1_mg_safing_level</name>
+          <field_number>22</field_number>
+          <field_location unit="byte">47</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>
+		        The safing level set for the GPC1-MG detector.
+            =0 level zero or nominal level safing; the software will
+            monitor the planetary detector for the conditions which
+            necessitate a higher level of safing. =1 level 1 safing; the 
+            HVPS voltage level for the affected sensor is ramped
+            down to 0 at a rate of 100 V/sec.  =2 level 2 safing; the
+            software turns off analog power to the affected sensor and
+            turns off the associated HVPS.  No further attempts are made
+            to restore the level-two-safed sensor to nominal safing.  The
+            software waits for ground command to reset the affected HVPS
+            voltage levels.
+		      </description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc1_mg_safing_retry</name>
+          <field_number>23</field_number>
+          <field_location unit="byte">48</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>The max number of retry attempts to reset the
+            GPC1-MG detector to level 0 safing.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc2_al_safing_level</name>
+          <field_number>24</field_number>
+          <field_location unit="byte">49</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>
+		        The safing level set for the GPC2-AL detector.
+            =0 level zero or nominal level safing; the software will
+            monitor the planetary detector for the conditions which
+            necessitate a higher level of safing. =1 level 1 safing; the 
+            HVPS voltage level for the affected sensor is ramped
+            down to 0 at a rate of 100 V/sec.  =2 level 2 safing; the
+            software turns off analog power to the affected sensor and
+            turns off the associated HVPS.  No further attempts are made
+            to restore the level-two-safed sensor to nominal safing.
+            The software waits for ground command to reset the affected
+            HVPS voltage levels.
+		      </description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc2_al_safing_retry</name>
+          <field_number>25</field_number>
+          <field_location unit="byte">50</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>The max number of retry attempts to reset the
+            GPC2-AL detector to level 0 safing.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc3_un_safing_level</name>
+          <field_number>26</field_number>
+          <field_location unit="byte">51</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>
+		        The safing level set for the GPC3-UNfiltered (UN)
+            detector. =0 level zero or nominal level safing; the software
+            will monitor the planetary detector for the conditions which
+            necessitate a higher level of safing. =1 level 1 safing; the
+            HVPS voltage level for the affected sensor is ramped down to
+            0 at a rate of 100 V/sec. =2 level 2 safing; the software turns
+            off analog power to the affected sensor and turns off the
+            associated HVPS.  No further attempts are made to restore the
+            level-two-safed sensor to nominal safing.  The software waits
+            for ground command to reset the affected HVPS voltage levels.
+		      </description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc3_un_safing_retry</name>
+          <field_number>27</field_number>
+          <field_location unit="byte">52</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>The max number of retry attempts to reset the
+            GPC3-UN detector to level 0 safing.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>discarded_packet_counter</name>
+          <field_number>28</field_number>
+          <field_location unit="byte">53</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>Number of calls to send-pkt that resulted in a return
+            value of false.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>tec_loss_of_control</name>
+          <field_number>29</field_number>
+          <field_location unit="byte">54</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>TEC loss of control flag. =0 no loss of control,
+            =1 loss of control.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>solar_flare_detected</name>
+          <field_number>30</field_number>
+          <field_location unit="byte">55</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>Solar flare detection flag. =0 no solar flare detected,
+            =1 flare detected.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>flare_handling_enabled</name>
+          <field_number>31</field_number>
+          <field_location unit="byte">56</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>Solar flare handling enabled flag, software checks
+            this value upon detection of a solar flare.  =0 do not handle solar
+            flare detection.  =1 continue algorithm for handling solar flare
+            detection (see SOLAR_FLARE_ENACT).</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>flare_handling_enacted</name>
+          <field_number>32</field_number>
+          <field_location unit="byte">57</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>
+		        Solar flare handling enacted flag. Allows software
+            to determine if solar flare handling has already been enacted or
+            whether this is a new detection of a solar flare. Only checked if
+            solar flare handling has been enabled (see previous field).
+            =0 the software sets it to true, starts the sf-time-enactable-left
+            counter out at sf-max-time-enactable, sets a flag telling the 1Hz
+            process to end the current integration and reporting period
+            immediately, and returns control to the 1Hz process.  =1 , the
+            software decrements the sf-time-enactable-left counter and checks
+            its value.  If sf-time-enactable-left is still greater than 0, the
+            algorithm does nothing further.  If sf-time-enactable-left has reached
+            0, the algorithm starts the sf-timeout-left counter out at
+            sf-timeout-period and sets the sf-handling-enacted-now flag to false.
+		      </description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>sensor_config_changed</name>
+          <field_number>33</field_number>
+          <field_location unit="byte">58</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>Flag showing whether sensor configuration has
+            changed. =0 no change, =1 change.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>lvps_plus_5v</name>
+          <field_number>34</field_number>
+          <field_location unit="byte">59</field_location>
+          <data_type>IEEE754MSBDouble</data_type>
+          <field_length unit="byte">8</field_length>
+          <unit>volts</unit>
+          <description>LVPS +5 volt monitor, smoothed.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>lvps_minus_5v</name>
+          <field_number>35</field_number>
+          <field_location unit="byte">67</field_location>
+          <data_type>IEEE754MSBDouble</data_type>
+          <field_length unit="byte">8</field_length>
+          <unit>volts</unit>
+          <description>LVPS -5 volt monitor, smoothed.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>lvps_plus_12v</name>
+          <field_number>36</field_number>
+          <field_location unit="byte">75</field_location>
+          <data_type>IEEE754MSBDouble</data_type>
+          <field_length unit="byte">8</field_length>
+          <unit>volts</unit>
+          <description>LVPS +12 volt monitor, smoothed.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>lvps_minus_12v</name>
+          <field_number>37</field_number>
+          <field_location unit="byte">83</field_location>
+          <data_type>IEEE754MSBDouble</data_type>
+          <field_length unit="byte">8</field_length>
+          <unit>volts</unit>
+          <description>LVPS -12 volt monitor, smoothed.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>lvps_spare0</name>
+          <field_number>38</field_number>
+          <field_location unit="byte">91</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>Spare unused column for LVPS monitoring.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>lvps_spare1</name>
+          <field_number>39</field_number>
+          <field_location unit="byte">92</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>Spare unused column for LVPS monitoring.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>lvps_spare2</name>
+          <field_number>40</field_number>
+          <field_location unit="byte">93</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>Spare unused column for LVPS monitoring.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>software_sub_version</name>
+          <field_number>41</field_number>
+          <field_location unit="byte">94</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>Sub-version of flight software.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>i2c_bus_error_count</name>
+          <field_number>42</field_number>
+          <field_location unit="byte">95</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>I2C bus error count.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>lvps_plus_5_i</name>
+          <field_number>43</field_number>
+          <field_location unit="byte">96</field_location>
+          <data_type>IEEE754MSBDouble</data_type>
+          <field_length unit="byte">8</field_length>
+          <unit>microAmps</unit>
+          <description>LVPS +5V current, smoothed.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>lvps_minus_5_i</name>
+          <field_number>44</field_number>
+          <field_location unit="byte">104</field_location>
+          <data_type>IEEE754MSBDouble</data_type>
+          <field_length unit="byte">8</field_length>
+          <unit>microAmps</unit>
+          <description>LVPS -5V current, smoothed.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>lvps_plus_12_i</name>
+          <field_number>45</field_number>
+          <field_location unit="byte">112</field_location>
+          <data_type>IEEE754MSBDouble</data_type>
+          <field_length unit="byte">8</field_length>
+          <unit>microAmps</unit>
+          <description>LVPS +12V current, smoothed.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>lvps_minus_12_i</name>
+          <field_number>46</field_number>
+          <field_location unit="byte">120</field_location>
+          <data_type>IEEE754MSBDouble</data_type>
+          <field_length unit="byte">8</field_length>
+          <unit>microAmps</unit>
+          <description>LVPS -12V current, smoothed.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>lvps_temp</name>
+          <field_number>47</field_number>
+          <field_location unit="byte">128</field_location>
+          <data_type>IEEE754MSBDouble</data_type>
+          <field_length unit="byte">8</field_length>
+          <unit>degreesC</unit>
+          <description>LVPS temperature, smoothed.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>lvps_primary_i</name>
+          <field_number>48</field_number>
+          <field_location unit="byte">136</field_location>
+          <data_type>IEEE754MSBDouble</data_type>
+          <field_length unit="byte">8</field_length>
+          <unit>microAmps</unit>
+          <description>LVPS primary current, smoothed.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>lvps_switched_primary_i</name>
+          <field_number>49</field_number>
+          <field_location unit="byte">144</field_location>
+          <data_type>IEEE754MSBDouble</data_type>
+          <field_length unit="byte">8</field_length>
+          <unit>microAmps</unit>
+          <description>LVPS switched primary current, smoothed.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc1_mg_plus_5v</name>
+          <field_number>50</field_number>
+          <field_location unit="byte">152</field_location>
+          <data_type>IEEE754MSBDouble</data_type>
+          <field_length unit="byte">8</field_length>
+          <unit>volts</unit>
+          <description>GPC1-MG +5 volt monitor, smoothed.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc2_al_plus_5v</name>
+          <field_number>51</field_number>
+          <field_location unit="byte">160</field_location>
+          <data_type>IEEE754MSBDouble</data_type>
+          <field_length unit="byte">8</field_length>
+          <unit>volts</unit>
+          <description>GPC2-AL +5 volt monitor, smoothed.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc3_un_plus_5v</name>
+          <field_number>52</field_number>
+          <field_location unit="byte">168</field_location>
+          <data_type>IEEE754MSBDouble</data_type>
+          <field_length unit="byte">8</field_length>
+          <unit>volts</unit>
+          <description>GPC3-UN +5 volt monitor, smoothed.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>sax_plus_5v</name>
+          <field_number>53</field_number>
+          <field_location unit="byte">176</field_location>
+          <data_type>IEEE754MSBDouble</data_type>
+          <field_length unit="byte">8</field_length>
+          <unit>volts</unit>
+          <description>SAX +5 volt monitor, smoothed.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>analog_plus_5v</name>
+          <field_number>54</field_number>
+          <field_location unit="byte">184</field_location>
+          <data_type>IEEE754MSBDouble</data_type>
+          <field_length unit="byte">8</field_length>
+          <unit>volts</unit>
+          <description>Analog +5 volt monitor, smoothed.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>digital_plus_5v</name>
+          <field_number>55</field_number>
+          <field_location unit="byte">192</field_location>
+          <data_type>IEEE754MSBDouble</data_type>
+          <field_length unit="byte">8</field_length>
+          <unit>volts</unit>
+          <description>Digital +5 volt monitor, smoothed.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc1_mg_minus_5v</name>
+          <field_number>56</field_number>
+          <field_location unit="byte">200</field_location>
+          <data_type>IEEE754MSBDouble</data_type>
+          <field_length unit="byte">8</field_length>
+          <unit>volts</unit>
+          <description>GPC1-MG -5 volt monitor, smoothed.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc2_al_minus_5v</name>
+          <field_number>57</field_number>
+          <field_location unit="byte">208</field_location>
+          <data_type>IEEE754MSBDouble</data_type>
+          <field_length unit="byte">8</field_length>
+          <unit>volts</unit>
+          <description>GPC2-AL -5 volt monitor, smoothed.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc3_un_minus_5v</name>
+          <field_number>58</field_number>
+          <field_location unit="byte">216</field_location>
+          <data_type>IEEE754MSBDouble</data_type>
+          <field_length unit="byte">8</field_length>
+          <unit>volts</unit>
+          <description>GPC3-UN -5 volt monitor, smoothed.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>sax_minus_5v</name>
+          <field_number>59</field_number>
+          <field_location unit="byte">224</field_location>
+          <data_type>IEEE754MSBDouble</data_type>
+          <field_length unit="byte">8</field_length>
+          <unit>volts</unit>
+          <description>SAX -5 volt monitor, smoothed.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>analog_minus_5v</name>
+          <field_number>60</field_number>
+          <field_location unit="byte">232</field_location>
+          <data_type>IEEE754MSBDouble</data_type>
+          <field_length unit="byte">8</field_length>
+          <unit>volts</unit>
+          <description>Analog -5 volt monitor, smoothed.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>tec_i</name>
+          <field_number>61</field_number>
+          <field_location unit="byte">240</field_location>
+          <data_type>IEEE754MSBDouble</data_type>
+          <field_length unit="byte">8</field_length>
+          <unit>microAmps</unit>
+          <description>TEC current, smoothed.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>mxu_temp</name>
+          <field_number>62</field_number>
+          <field_location unit="byte">248</field_location>
+          <data_type>IEEE754MSBDouble</data_type>
+          <field_length unit="byte">8</field_length>
+          <unit>degreesC</unit>
+          <description>MXU temperature, smoothed.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>solar_detector_temp</name>
+          <field_number>63</field_number>
+          <field_location unit="byte">256</field_location>
+          <data_type>IEEE754MSBDouble</data_type>
+          <field_length unit="byte">8</field_length>
+          <unit>degrees</unit>
+          <description>Solar detector temperature, smoothed.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>sax_temp</name>
+          <field_number>64</field_number>
+          <field_location unit="byte">264</field_location>
+          <data_type>IEEE754MSBDouble</data_type>
+          <field_length unit="byte">8</field_length>
+          <unit>degrees</unit>
+          <description>SAX temperature, smoothed.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>solar_detector_i</name>
+          <field_number>65</field_number>
+          <field_location unit="byte">272</field_location>
+          <data_type>IEEE754MSBDouble</data_type>
+          <field_length unit="byte">8</field_length>
+          <unit>picoAmps</unit>
+          <description>Solar detector current, smoothed.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc1_mg_voltage_stepping</name>
+          <field_number>66</field_number>
+          <field_location unit="byte">280</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>
+		        Indicates whether the GPC1-MG detector's high
+            voltage state is seeking. See the MESSENGER XRS Software
+            Specification document for an explanation of the seeking
+            state. =0 no, =1 yes.
+		      </description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc1_mg_voltage</name>
+          <field_number>67</field_number>
+          <field_location unit="byte">281</field_location>
+          <data_type>IEEE754MSBDouble</data_type>
+          <field_length unit="byte">8</field_length>
+          <unit>volts</unit>
+          <description>GPC1-MG voltage measurement, smoothed.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc2_al_voltage_stepping</name>
+          <field_number>68</field_number>
+          <field_location unit="byte">289</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>
+		        Indicates whether the GPC2-AL detector's high
+            voltage state is seeking. See the MESSENGER XRS Software
+            Specification document for an explanation of the seeking
+            state. =0 no, =1 yes.
+		      </description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc2_al_voltage</name>
+          <field_number>69</field_number>
+          <field_location unit="byte">290</field_location>
+          <data_type>IEEE754MSBDouble</data_type>
+          <field_length unit="byte">8</field_length>
+          <unit>volts</unit>
+          <description>GPC2-AL voltage measurement, smoothed.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc3_un_voltage_stepping</name>
+          <field_number>70</field_number>
+          <field_location unit="byte">298</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>
+		        Indicates whether the GPC3-UN detector's high
+            voltage state is seeking. See the MESSENGER XRS Software
+            Specification document for an explanation of the seeking
+            state. =0 no, =1 yes.
+		      </description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc3_un_voltage</name>
+          <field_number>71</field_number>
+          <field_location unit="byte">299</field_location>
+          <data_type>IEEE754MSBDouble</data_type>
+          <field_length unit="byte">8</field_length>
+          <unit>volts</unit>
+          <description>GPC3-UN voltage measurement, smoothed.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>bias_supply_volt_stepping</name>
+          <field_number>72</field_number>
+          <field_location unit="byte">307</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>
+		        Indicates whether the Bias detector's high
+            voltage state is seeking. See the MESSENGER XRS Software
+            Specification document for an explanation of the seeking
+            state. =0 no, =1 yes.
+		      </description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>bias_voltage</name>
+          <field_number>73</field_number>
+          <field_location unit="byte">308</field_location>
+          <data_type>IEEE754MSBDouble</data_type>
+          <field_length unit="byte">8</field_length>
+          <unit>volts</unit>
+          <description>Bias voltage measurement, smoothed.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc1_mg_supply_temp</name>
+          <field_number>74</field_number>
+          <field_location unit="byte">316</field_location>
+          <data_type>IEEE754MSBDouble</data_type>
+          <field_length unit="byte">8</field_length>
+          <unit>degreesC</unit>
+          <description>GPC1-MG supply temperature measurement, smoothed.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc2_al_supply_temp</name>
+          <field_number>75</field_number>
+          <field_location unit="byte">324</field_location>
+          <data_type>IEEE754MSBDouble</data_type>
+          <field_length unit="byte">8</field_length>
+          <unit>degreesC</unit>
+          <description>GPC2-AL supply temperature measurement, smoothed.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc3_un_supply_temp</name>
+          <field_number>76</field_number>
+          <field_location unit="byte">332</field_location>
+          <data_type>IEEE754MSBDouble</data_type>
+          <field_length unit="byte">8</field_length>
+          <unit>degreesC</unit>
+          <description>GPC3-UN supply temperature measurement, smoothed.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>bias_supply_temp</name>
+          <field_number>77</field_number>
+          <field_location unit="byte">340</field_location>
+          <data_type>IEEE754MSBDouble</data_type>
+          <field_length unit="byte">8</field_length>
+          <unit>degreesC</unit>
+          <description>Bias supply temperature measurement, smoothed.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>actual_integration_time</name>
+          <field_number>78</field_number>
+          <field_location unit="byte">348</field_location>
+          <data_type>UnsignedMSB4</data_type>
+          <field_length unit="byte">4</field_length>
+          <unit>seconds</unit>
+          <description>Actual integration period in seconds.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>actual_reporting_time</name>
+          <field_number>79</field_number>
+          <field_location unit="byte">352</field_location>
+          <data_type>UnsignedMSB4</data_type>
+          <field_length unit="byte">4</field_length>
+          <unit>seconds</unit>
+          <description>Actual reporting time in seconds.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc1_mg_power_analog</name>
+          <field_number>80</field_number>
+          <field_location unit="byte">356</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>GPC1-MG analog power setting. =0 disabled,
+            =1 enabled.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc1_mg_power_hvps</name>
+          <field_number>81</field_number>
+          <field_location unit="byte">357</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>GPC1-MG HVPS power setting, =0 disabled,
+            =1 enabled.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc1_mg_voltage_setting</name>
+          <field_number>82</field_number>
+          <field_location unit="byte">358</field_location>
+          <data_type>UnsignedMSB2</data_type>
+          <field_length unit="byte">2</field_length>
+          <description>GPC1-MG voltage setting.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc2_al_power_analog</name>
+          <field_number>83</field_number>
+          <field_location unit="byte">360</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>GPC2-AL analog power setting, =0 disabled,
+            =1 enabled.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc2_al_power_hvps</name>
+          <field_number>84</field_number>
+          <field_location unit="byte">361</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>GPC2-AL HVPS power setting, =0 disabled,
+            =1 enabled.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc2_al_voltage_setting</name>
+          <field_number>85</field_number>
+          <field_location unit="byte">362</field_location>
+          <data_type>UnsignedMSB2</data_type>
+          <field_length unit="byte">2</field_length>
+          <description>GPC2-AL voltage setting.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc3_un_power_analog</name>
+          <field_number>86</field_number>
+          <field_location unit="byte">364</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>GPC3-UN analog power setting.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc3_un_power_hvps</name>
+          <field_number>87</field_number>
+          <field_location unit="byte">365</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>GPC3-UN HVPS power setting, =0 disabled,
+            =1 enabled.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc3_un_voltage_setting</name>
+          <field_number>88</field_number>
+          <field_location unit="byte">366</field_location>
+          <data_type>UnsignedMSB2</data_type>
+          <field_length unit="byte">2</field_length>
+          <description>GPC3-UN voltage setting.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>pin_power_analog</name>
+          <field_number>89</field_number>
+          <field_location unit="byte">368</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>PIN analog power setting. =0 disabled, =1 enabled.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>pin_tec_enable</name>
+          <field_number>90</field_number>
+          <field_location unit="byte">369</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>PIN TEC enable, =0 disabled, =1 enabled.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>pin_tec_mode</name>
+          <field_number>91</field_number>
+          <field_location unit="byte">370</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>PIN TEC mode, =0 cool, =1 heat.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>pin_power_bias</name>
+          <field_number>92</field_number>
+          <field_location unit="byte">371</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>PIN power bias =0 disabled, =1 enabled.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>bias_voltage_setting</name>
+          <field_number>93</field_number>
+          <field_location unit="byte">372</field_location>
+          <data_type>UnsignedMSB2</data_type>
+          <field_length unit="byte">2</field_length>
+          <description>Bias voltage setting.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc1_mg_low_level_disc</name>
+          <field_number>94</field_number>
+          <field_location unit="byte">374</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>GPC1-MG low level discriminator.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc1_mg_rise_time_disc_1</name>
+          <field_number>95</field_number>
+          <field_location unit="byte">375</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>GPC1-MG rise time discriminator 1.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc1_mg_rise_time_disc_2</name>
+          <field_number>96</field_number>
+          <field_location unit="byte">376</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>GPC1-MG rise time discriminator 2.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc1_mg_veto_disc</name>
+          <field_number>97</field_number>
+          <field_location unit="byte">377</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>GPC1-MG veto discriminator.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc2_al_low_level_disc</name>
+          <field_number>98</field_number>
+          <field_location unit="byte">378</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>GPC2-AL low level discriminator.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc2_al_rise_time_disc_1</name>
+          <field_number>99</field_number>
+          <field_location unit="byte">379</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>GPC2-AL rise time discriminator 1.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc2_al_rise_time_disc_2</name>
+          <field_number>100</field_number>
+          <field_location unit="byte">380</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>GPC2-AL rise time discriminator 2.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc2_al_veto_disc</name>
+          <field_number>101</field_number>
+          <field_location unit="byte">381</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>GPC2-AL veto discriminator.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc3_un_low_level_disc</name>
+          <field_number>102</field_number>
+          <field_location unit="byte">382</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>GPC3-UN low level discriminator.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc3_un_rise_time_disc_1</name>
+          <field_number>103</field_number>
+          <field_location unit="byte">383</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>GPC3-UN rise time discriminator 1.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc3_un_rise_time_disc_2</name>
+          <field_number>104</field_number>
+          <field_location unit="byte">384</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>GPC3-UN rise time discriminator 2.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc3_un_veto_disc</name>
+          <field_number>105</field_number>
+          <field_location unit="byte">385</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>GPC3-UN veto discriminator.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>pin_low_level_disc</name>
+          <field_number>106</field_number>
+          <field_location unit="byte">386</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>PIN low level discriminator (energy threshold).</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>tec_current_setting</name>
+          <field_number>107</field_number>
+          <field_location unit="byte">387</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>TEC current setting.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>spare_dac_1</name>
+          <field_number>108</field_number>
+          <field_location unit="byte">388</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>Spare column (DAC 1).</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>spare_dac_2</name>
+          <field_number>109</field_number>
+          <field_location unit="byte">389</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>Spare column (DAC 2).</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc2_al_rise_pileup</name>
+          <field_number>110</field_number>
+          <field_location unit="byte">390</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>RISE PILEUP criterion to determine valid event for
+            GPC2_AL detector. =0 disabled, =1 enabled.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc2_al_rise_time</name>
+          <field_number>111</field_number>
+          <field_location unit="byte">391</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>RISE TIME criterion to determine valid event for
+            GPC2_AL detector. =0 disabled, =1 enabled.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc2_al_pileup_enable</name>
+          <field_number>112</field_number>
+          <field_location unit="byte">392</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>PILEUP_ENABLE criterion to determine valid event for
+            GPC2_AL detector. =0 disabled, =1 enabled.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc2_al_veto_enable</name>
+          <field_number>113</field_number>
+          <field_location unit="byte">393</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>VETO_ENABLE criterion to determine valid event for
+            GPC2_AL detector. =0 disabled, =1 enabled.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc2_al_enable</name>
+          <field_number>114</field_number>
+          <field_location unit="byte">394</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>ENABLE criterion to determine valid event for
+            GPC2_AL detector. =0 disabled, =1 enabled.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc1_mg_rise_pileup</name>
+          <field_number>115</field_number>
+          <field_location unit="byte">395</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>RISE PILEUP criterion to determine valid event for
+            GPC1_MG detector. =0 disabled, =1 enabled.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc1_mg_rise_time</name>
+          <field_number>116</field_number>
+          <field_location unit="byte">396</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>RISE TIME criterion to determine valid event for
+            GPC1_MG detector. =0 disabled, =1 enabled.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc1_mg_pileup_enable</name>
+          <field_number>117</field_number>
+          <field_location unit="byte">397</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>PILEUP ENABLE criterion to determine valid event
+            for GPC1_MG detector. =0 disabled, =1 enabled.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc1_mg_veto_enable</name>
+          <field_number>118</field_number>
+          <field_location unit="byte">398</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>VETO ENABLE criterion to determine valid event
+            for GPC1_MG detector. =0 disabled, =1 enabled.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc1_mg_enable</name>
+          <field_number>119</field_number>
+          <field_location unit="byte">399</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>ENABLE criterion to determine valid event for
+            GPC1_MG detector. =0 disabled, =1 enabled.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>debug_counters</name>
+          <field_number>120</field_number>
+          <field_location unit="byte">400</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>Diagnostic for planetary sensor. =0 disabled,
+            =1 enabled.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>pin_pileup_enable</name>
+          <field_number>121</field_number>
+          <field_location unit="byte">401</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>PIN PILEUP criterion to determine valid event
+            for PIN detector. =0 disabled, =1 enabled.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>pin_enable</name>
+          <field_number>122</field_number>
+          <field_location unit="byte">402</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>ENABLE criterion to determine valid event for
+            PIN detector. =0 disabled, =1 enabled.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc3_un_rise_pileup</name>
+          <field_number>123</field_number>
+          <field_location unit="byte">403</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>RISE PILEUP criterion to determine valid event
+            for GPC3_UN detector. =0 disabled, =1 enabled.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc3_un_rise_time</name>
+          <field_number>124</field_number>
+          <field_location unit="byte">404</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>RISE TIME criterion to determine valid event for
+            GPC3_UN detector. =0 disabled, =1 enabled.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc3_un_pileup_enable</name>
+          <field_number>125</field_number>
+          <field_location unit="byte">405</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>PILEUP ENABLE criterion to determine valid event
+            for GPC3_UN detector. =0 disabled, =1 enabled.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc3_un_veto_enable</name>
+          <field_number>126</field_number>
+          <field_location unit="byte">406</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>VETO ENABLE criterion to determine valid event
+            for GPC3_UN detector. =0 disabled, =1 enabled.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc3_un_enable</name>
+          <field_number>127</field_number>
+          <field_location unit="byte">407</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>ENABLE criterion to determine valid event for
+            GPC3_UN detector. =0 disabled, =1 enabled.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>solar_monitor_rate</name>
+          <field_number>128</field_number>
+          <field_location unit="byte">408</field_location>
+          <data_type>UnsignedMSB4</data_type>
+          <field_length unit="byte">4</field_length>
+          <description>Solar monitor detector rate per integration period.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>solar_monitor_pileup_rate</name>
+          <field_number>129</field_number>
+          <field_location unit="byte">412</field_location>
+          <data_type>UnsignedMSB4</data_type>
+          <field_length unit="byte">4</field_length>
+          <description>Number of events that suffer from pileup.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>solar_monitor_valid_rate</name>
+          <field_number>130</field_number>
+          <field_location unit="byte">416</field_location>
+          <data_type>UnsignedMSB4</data_type>
+          <field_length unit="byte">4</field_length>
+          <description>Solar monitor valid rate per integration period.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>solar_monitor_analyzed_rate</name>
+          <field_number>131</field_number>
+          <field_location unit="byte">420</field_location>
+          <data_type>UnsignedMSB4</data_type>
+          <field_length unit="byte">4</field_length>
+          <description>Number of events that get fully processed.
+            The number of counts in a solar monitor spectrum.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>solar_monitor_high_e_rate</name>
+          <field_number>132</field_number>
+          <field_location unit="byte">424</field_location>
+          <data_type>UnsignedMSB4</data_type>
+          <field_length unit="byte">4</field_length>
+          <description>Solar monitor high energy rate per integration
+            period.  All counts above the top channel.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>solar_monitor_loss</name>
+          <field_number>133</field_number>
+          <field_location unit="byte">428</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>The loss rate from the electronics to the software.
+            It's the fraction of events that overflow the FIFO and are lost.
+            It does not include front-end losses.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc1_mg_center_anode_rate</name>
+          <field_number>134</field_number>
+          <field_location unit="byte">429</field_location>
+          <data_type>UnsignedMSB4</data_type>
+          <field_length unit="byte">4</field_length>
+          <description>GPC1-MG center anode rate per integration period.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc1_mg_veto_anode_rate</name>
+          <field_number>135</field_number>
+          <field_location unit="byte">433</field_location>
+          <data_type>UnsignedMSB4</data_type>
+          <field_length unit="byte">4</field_length>
+          <description>GPC1-MG veto anode rate per integration period.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc1_mg_veto_rate</name>
+          <field_number>136</field_number>
+          <field_location unit="byte">437</field_location>
+          <data_type>UnsignedMSB4</data_type>
+          <field_length unit="byte">4</field_length>
+          <description>GPC1-MG veto rate per integration period.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc1_mg_pileup_rate</name>
+          <field_number>137</field_number>
+          <field_location unit="byte">441</field_location>
+          <data_type>UnsignedMSB4</data_type>
+          <field_length unit="byte">4</field_length>
+          <description>GPC1-MG pileup rate per integration period.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc1_mg_rise_pileup_rate</name>
+          <field_number>138</field_number>
+          <field_location unit="byte">445</field_location>
+          <data_type>UnsignedMSB4</data_type>
+          <field_length unit="byte">4</field_length>
+          <description>GPC1-MG rise pileup rate per integration period.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc1_mg_valid_rate</name>
+          <field_number>139</field_number>
+          <field_location unit="byte">449</field_location>
+          <data_type>UnsignedMSB4</data_type>
+          <field_length unit="byte">4</field_length>
+          <description>GPC1-MG valid rate per integration period.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc1_mg_analyzed_event_rate</name>
+          <field_number>140</field_number>
+          <field_location unit="byte">453</field_location>
+          <data_type>UnsignedMSB4</data_type>
+          <field_length unit="byte">4</field_length>
+          <description>GPC1-MG analyzed event rate per integration period.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc1_mg_rise_time_reject</name>
+          <field_number>141</field_number>
+          <field_location unit="byte">457</field_location>
+          <data_type>UnsignedMSB4</data_type>
+          <field_length unit="byte">4</field_length>
+          <description>GPC1-MG rise time reject rate per integration
+            period.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc1_mg_high_energy_rate</name>
+          <field_number>142</field_number>
+          <field_location unit="byte">461</field_location>
+          <data_type>UnsignedMSB4</data_type>
+          <field_length unit="byte">4</field_length>
+          <description>GPC1-MG high energy rate per integration period.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc1_mg_spare_rate_1</name>
+          <field_number>143</field_number>
+          <field_location unit="byte">465</field_location>
+          <data_type>UnsignedMSB4</data_type>
+          <field_length unit="byte">4</field_length>
+          <description>Spare column for GPC1-MG rates per integration
+            period.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc1_mg_spare_rate_2</name>
+          <field_number>144</field_number>
+          <field_location unit="byte">469</field_location>
+          <data_type>UnsignedMSB4</data_type>
+          <field_length unit="byte">4</field_length>
+          <description>Spare column for GPC1-MG rates.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc1_mg_loss_percentage</name>
+          <field_number>145</field_number>
+          <field_location unit="byte">473</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>GPC1-MG loss percentage.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc2_al_center_anode_rate</name>
+          <field_number>146</field_number>
+          <field_location unit="byte">474</field_location>
+          <data_type>UnsignedMSB4</data_type>
+          <field_length unit="byte">4</field_length>
+          <description>GPC2-AL center anode rate per integration period.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc2_al_veto_anode_rate</name>
+          <field_number>147</field_number>
+          <field_location unit="byte">478</field_location>
+          <data_type>UnsignedMSB4</data_type>
+          <field_length unit="byte">4</field_length>
+          <description>GPC2-AL veto anode rate per integration period.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc2_al_veto_rate</name>
+          <field_number>148</field_number>
+          <field_location unit="byte">482</field_location>
+          <data_type>UnsignedMSB4</data_type>
+          <field_length unit="byte">4</field_length>
+          <description>GPC2-AL veto rate per integration period.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc2_al_pileup_rate</name>
+          <field_number>149</field_number>
+          <field_location unit="byte">486</field_location>
+          <data_type>UnsignedMSB4</data_type>
+          <field_length unit="byte">4</field_length>
+          <description>GPC2-AL pileup rate per integration period.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc2_al_rise_pileup_rate</name>
+          <field_number>150</field_number>
+          <field_location unit="byte">490</field_location>
+          <data_type>UnsignedMSB4</data_type>
+          <field_length unit="byte">4</field_length>
+          <description>GPC2-AL rise pileup rate per integration period.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc2_al_valid_rate</name>
+          <field_number>151</field_number>
+          <field_location unit="byte">494</field_location>
+          <data_type>UnsignedMSB4</data_type>
+          <field_length unit="byte">4</field_length>
+          <description>GPC2-AL valid rate per integration period.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc2_al_analyzed_event_rate</name>
+          <field_number>152</field_number>
+          <field_location unit="byte">498</field_location>
+          <data_type>UnsignedMSB4</data_type>
+          <field_length unit="byte">4</field_length>
+          <description>GPC2-AL analyzed event rate per integration period.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc2_al_rise_time_reject</name>
+          <field_number>153</field_number>
+          <field_location unit="byte">502</field_location>
+          <data_type>UnsignedMSB4</data_type>
+          <field_length unit="byte">4</field_length>
+          <description>GPC2-AL rise time reject rate per integration
+            period.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc2_al_high_energy_rate</name>
+          <field_number>154</field_number>
+          <field_location unit="byte">506</field_location>
+          <data_type>UnsignedMSB4</data_type>
+          <field_length unit="byte">4</field_length>
+          <description>GPC2-AL high energy rate per integration period.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc2_al_spare_rate_1</name>
+          <field_number>155</field_number>
+          <field_location unit="byte">510</field_location>
+          <data_type>UnsignedMSB4</data_type>
+          <field_length unit="byte">4</field_length>
+          <description>GPC2-AL spare rates column.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc2_al_spare_rate_2</name>
+          <field_number>156</field_number>
+          <field_location unit="byte">514</field_location>
+          <data_type>UnsignedMSB4</data_type>
+          <field_length unit="byte">4</field_length>
+          <description>GPC2-AL spare rates column.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc2_al_loss_percentage</name>
+          <field_number>157</field_number>
+          <field_location unit="byte">518</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>GPC2-AL loss percentage.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc3_un_center_anode_rate</name>
+          <field_number>158</field_number>
+          <field_location unit="byte">519</field_location>
+          <data_type>UnsignedMSB4</data_type>
+          <field_length unit="byte">4</field_length>
+          <description>GPC3-UN center anode rate per integration period.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc3_un_veto_anode_rate</name>
+          <field_number>159</field_number>
+          <field_location unit="byte">523</field_location>
+          <data_type>UnsignedMSB4</data_type>
+          <field_length unit="byte">4</field_length>
+          <description>GPC3-UN veto anode rate per integration period.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc3_un_veto_rate</name>
+          <field_number>160</field_number>
+          <field_location unit="byte">527</field_location>
+          <data_type>UnsignedMSB4</data_type>
+          <field_length unit="byte">4</field_length>
+          <description>GPC3-UN veto rate per integration period.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc3_un_pileup_rate</name>
+          <field_number>161</field_number>
+          <field_location unit="byte">531</field_location>
+          <data_type>UnsignedMSB4</data_type>
+          <field_length unit="byte">4</field_length>
+          <description>GPC3-UN pileup rate per integration period.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc3_un_rise_pileup_rate</name>
+          <field_number>162</field_number>
+          <field_location unit="byte">535</field_location>
+          <data_type>UnsignedMSB4</data_type>
+          <field_length unit="byte">4</field_length>
+          <description>GPC3-UN rise pileup rate per integration period.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc3_un_valid_rate</name>
+          <field_number>163</field_number>
+          <field_location unit="byte">539</field_location>
+          <data_type>UnsignedMSB4</data_type>
+          <field_length unit="byte">4</field_length>
+          <description>GPC3-UN valid rate per integration period.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc3_un_analyzed_event_rate</name>
+          <field_number>164</field_number>
+          <field_location unit="byte">543</field_location>
+          <data_type>UnsignedMSB4</data_type>
+          <field_length unit="byte">4</field_length>
+          <description>GPC3-UN analyzed event rate per integration period.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc3_un_rise_time_reject</name>
+          <field_number>165</field_number>
+          <field_location unit="byte">547</field_location>
+          <data_type>UnsignedMSB4</data_type>
+          <field_length unit="byte">4</field_length>
+          <description>GPC3-UN rise time reject rate per integration
+            period.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc3_un_high_energy_rate</name>
+          <field_number>166</field_number>
+          <field_location unit="byte">551</field_location>
+          <data_type>UnsignedMSB4</data_type>
+          <field_length unit="byte">4</field_length>
+          <description>GPC3-UN high energy rate per integration period.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc3_un_spare_rate_1</name>
+          <field_number>167</field_number>
+          <field_location unit="byte">555</field_location>
+          <data_type>UnsignedMSB4</data_type>
+          <field_length unit="byte">4</field_length>
+          <description>Spare column for GPC3-UN rates.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc3_un_spare_rate_2</name>
+          <field_number>168</field_number>
+          <field_location unit="byte">559</field_location>
+          <data_type>UnsignedMSB4</data_type>
+          <field_length unit="byte">4</field_length>
+          <description>Spare column for GPC3-UN rates.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc3_un_loss_percentage</name>
+          <field_number>169</field_number>
+          <field_location unit="byte">563</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>GPC3-UN loss percentage.</description>
+        </Field_Binary>
+        <Group_Field_Binary>
+          <group_number>1</group_number>
+          <repetitions>10</repetitions>
+          <fields>1</fields>
+          <groups>0</groups>
+          <group_location unit="byte">564</group_location>
+          <group_length unit="byte">20</group_length>
+          <Field_Binary>
+            <name>solar_stability</name>
+            <field_number>1</field_number>
+            <field_location unit="byte">1</field_location>
+            <data_type>UnsignedMSB2</data_type>
+            <field_length unit="byte">2</field_length>
+            <description>
+		          A 10 element array of solar monitor detector rate
+              measurements. The integration period is divided into 10 equal
+              segments with an accumulated rate (per second) for each. Valid
+              data for this column is only obtained by the instrument if solar
+              flare handling is enabled at the start of the integration and
+              reporting period. Values are set to a default of 999 if solar
+              flare handling was not enabled.
+		        </description>
+            <Special_Constants>
+              <not_applicable_constant>999</not_applicable_constant>
+            </Special_Constants>
+          </Field_Binary>
+        </Group_Field_Binary>
+        <Field_Binary>
+          <name>solar_monitor_spect_shift</name>
+          <field_number>170</field_number>
+          <field_location unit="byte">584</field_location>
+          <data_type>UnsignedMSB2</data_type>
+          <field_length unit="byte">2</field_length>
+          <description>
+		        The divisor (bit shift) for the Solar Monitor
+            spectrum.  When any channel in the solar monitor spectrum exceeds
+            65535, the spectrum is shifted to the right, throwing out the
+            least significant bits, keeping the 16 most significant bits.
+		      </description>
+        </Field_Binary>
+        <Group_Field_Binary>
+          <group_number>2</group_number>
+          <repetitions>231</repetitions>
+          <fields>1</fields>
+          <groups>0</groups>
+          <group_location unit="byte">586</group_location>
+          <group_length unit="byte">462</group_length>
+          <Field_Binary>
+            <name>solar_mon_spectrum_23_253</name>
+            <field_number>1</field_number>
+            <field_location unit="byte">1</field_location>
+            <data_type>UnsignedMSB2</data_type>
+            <field_length unit="byte">2</field_length>
+            <description>Solar monitor spectra channels (23-253).</description>
+          </Field_Binary>
+        </Group_Field_Binary>
+        <Group_Field_Binary>
+          <group_number>3</group_number>
+          <repetitions>244</repetitions>
+          <fields>1</fields>
+          <groups>0</groups>
+          <group_location unit="byte">1048</group_location>
+          <group_length unit="byte">488</group_length>
+          <Field_Binary>
+            <name>gpc1_mg_spectrum_10_253</name>
+            <field_number>1</field_number>
+            <field_location unit="byte">1</field_location>
+            <data_type>UnsignedMSB2</data_type>
+            <field_length unit="byte">2</field_length>
+            <description>GPC1-MG spectra channels (10-253).</description>
+          </Field_Binary>
+        </Group_Field_Binary>
+        <Group_Field_Binary>
+          <group_number>4</group_number>
+          <repetitions>244</repetitions>
+          <fields>1</fields>
+          <groups>0</groups>
+          <group_location unit="byte">1536</group_location>
+          <group_length unit="byte">488</group_length>
+          <Field_Binary>
+            <name>gpc2_al_spectrum_10_253</name>
+            <field_number>1</field_number>
+            <field_location unit="byte">1</field_location>
+            <data_type>UnsignedMSB2</data_type>
+            <field_length unit="byte">2</field_length>
+            <description>GPC2-AL spectra channels (10-253).</description>
+          </Field_Binary>
+        </Group_Field_Binary>
+        <Group_Field_Binary>
+          <group_number>5</group_number>
+          <repetitions>244</repetitions>
+          <fields>1</fields>
+          <groups>0</groups>
+          <group_location unit="byte">2024</group_location>
+          <group_length unit="byte">488</group_length>
+          <Field_Binary>
+            <name>gpc3_un_spectrum_10_253</name>
+            <field_number>1</field_number>
+            <field_location unit="byte">1</field_location>
+            <data_type>UnsignedMSB2</data_type>
+            <field_length unit="byte">2</field_length>
+            <description>GPC3-UN spectra channels (10-253).</description>
+          </Field_Binary>
+        </Group_Field_Binary>
+        <Field_Binary>
+          <name>utc</name>
+          <field_number>171</field_number>
+          <field_location unit="byte">2512</field_location>
+          <data_type>ASCII_String</data_type>
+          <field_length unit="byte">23</field_length>
+          <description>MET converted to UTC, stored as:
+            yyyy-mm-ddThh:mm:ss.sss.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>local_hour</name>
+          <field_number>172</field_number>
+          <field_location unit="byte">2535</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <unit>hours</unit>
+          <description>Local Sun hour at the sub-spacecraft point.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>local_minute</name>
+          <field_number>173</field_number>
+          <field_location unit="byte">2536</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <unit>minutes</unit>
+          <description>Local Sun minute at the sub-spacecraft point.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>mercury_sol</name>
+          <field_number>174</field_number>
+          <field_location unit="byte">2537</field_location>
+          <data_type>IEEE754MSBDouble</data_type>
+          <field_length unit="byte">8</field_length>
+          <unit>degrees</unit>
+          <description>Longitude of the Sun at 0 hours UT on the date
+            of the record. Taken from the Association of Lunar and Planetary
+            Observers Ephemeris for Physical Observation of Mercury.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>phase_angle</name>
+          <field_number>175</field_number>
+          <field_location unit="byte">2545</field_location>
+          <data_type>IEEE754MSBSingle</data_type>
+          <field_length unit="byte">4</field_length>
+          <unit>degrees</unit>
+          <description>Phase angle (between direction from the sun to the
+            surface and direction from the surface to the spacecraft).</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>avg_sc_distance</name>
+          <field_number>176</field_number>
+          <field_location unit="byte">2549</field_location>
+          <data_type>IEEE754MSBSingle</data_type>
+          <field_length unit="byte">4</field_length>
+          <unit>kilometers</unit>
+          <description>Average distance of the planet from the Spacecraft.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>angle_sun_solar_monitor</name>
+          <field_number>177</field_number>
+          <field_location unit="byte">2553</field_location>
+          <data_type>IEEE754MSBSingle</data_type>
+          <field_length unit="byte">4</field_length>
+          <unit>degrees</unit>
+          <description>Angle between the Sun and the solar monitor.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>sun_distance</name>
+          <field_number>178</field_number>
+          <field_location unit="byte">2557</field_location>
+          <data_type>IEEE754MSBSingle</data_type>
+          <field_length unit="byte">4</field_length>
+          <unit>kilometers</unit>
+          <description>Sun Position vector magnitude.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>intersection</name>
+          <field_number>179</field_number>
+          <field_location unit="byte">2561</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>True if the pointing vector intersects Mercury.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>pointing</name>
+          <field_number>180</field_number>
+          <field_location unit="byte">2562</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>True if pointing data was available.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>hermeocentric_latitude</name>
+          <field_number>181</field_number>
+          <field_location unit="byte">2563</field_location>
+          <data_type>IEEE754MSBDouble</data_type>
+          <field_length unit="byte">8</field_length>
+          <unit>degrees</unit>
+          <description>Sub spacecraft longitude in Mercury fixed
+            coordinates at the middle of the pixel.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>hermeocentric_longitude</name>
+          <field_number>182</field_number>
+          <field_location unit="byte">2571</field_location>
+          <data_type>IEEE754MSBDouble</data_type>
+          <field_length unit="byte">8</field_length>
+          <unit>degrees</unit>
+          <description>Sub spacecraft longitude in Mercury fixed
+            coordinated at the middle of the pixel. Longitude increases
+            towards the East.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>scalt</name>
+          <field_number>183</field_number>
+          <field_location unit="byte">2579</field_location>
+          <data_type>IEEE754MSBSingle</data_type>
+          <field_length unit="byte">4</field_length>
+          <unit>kilometers</unit>
+          <description>Hermocentric altitude, in kilometers, of the
+            sub-spacecraft point in Mercury-fixed rotating frame in the
+            middle of the pixel.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>bs_vector_x</name>
+          <field_number>184</field_number>
+          <field_location unit="byte">2583</field_location>
+          <data_type>IEEE754MSBSingle</data_type>
+          <field_length unit="byte">4</field_length>
+          <description>Boresight vector, x component in the J2000 frame.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>bs_vector_y</name>
+          <field_number>185</field_number>
+          <field_location unit="byte">2587</field_location>
+          <data_type>IEEE754MSBSingle</data_type>
+          <field_length unit="byte">4</field_length>
+          <description>Boresight vector, y component in the J2000 frame.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>bs_vector_z</name>
+          <field_number>186</field_number>
+          <field_location unit="byte">2591</field_location>
+          <data_type>IEEE754MSBSingle</data_type>
+          <field_length unit="byte">4</field_length>
+          <description>Boresight vector, z component in the J2000 frame.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>instr_boresight_mercury_x</name>
+          <field_number>187</field_number>
+          <field_location unit="byte">2595</field_location>
+          <data_type>IEEE754MSBSingle</data_type>
+          <field_length unit="byte">4</field_length>
+          <unit>kilometers</unit>
+          <description>Sub instrument boresight x component in Mercury fixed
+            coordinates.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>instr_boresight_mercury_y</name>
+          <field_number>188</field_number>
+          <field_location unit="byte">2599</field_location>
+          <data_type>IEEE754MSBSingle</data_type>
+          <field_length unit="byte">4</field_length>
+          <unit>kilometers</unit>
+          <description>Sub instrument boresight y component in Mercury fixed
+            coordinates.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>instr_boresight_mercury_z</name>
+          <field_number>189</field_number>
+          <field_location unit="byte">2603</field_location>
+          <data_type>IEEE754MSBSingle</data_type>
+          <field_length unit="byte">4</field_length>
+          <unit>kilometers</unit>
+          <description>Sub instrument boresight z component in Mercury fixed
+            coordinates.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>earth_position_x</name>
+          <field_number>190</field_number>
+          <field_location unit="byte">2607</field_location>
+          <data_type>IEEE754MSBSingle</data_type>
+          <field_length unit="byte">4</field_length>
+          <description>Position of the Earth (ET*) in Mercury fixed coord.
+            system (ET*).</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>earth_position_y</name>
+          <field_number>191</field_number>
+          <field_location unit="byte">2611</field_location>
+          <data_type>IEEE754MSBSingle</data_type>
+          <field_length unit="byte">4</field_length>
+          <description>Position of the Earth (ET*) in Mercury fixed coord.
+            system (ET*).</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>earth_position_z</name>
+          <field_number>192</field_number>
+          <field_location unit="byte">2615</field_location>
+          <data_type>IEEE754MSBSingle</data_type>
+          <field_length unit="byte">4</field_length>
+          <description>Position of the Earth (ET*) in Mercury fixed coord.
+            system (ET*).</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>sc_position_x</name>
+          <field_number>193</field_number>
+          <field_location unit="byte">2619</field_location>
+          <data_type>IEEE754MSBSingle</data_type>
+          <field_length unit="byte">4</field_length>
+          <description>Position of spacecraft in J2000 frame.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>sc_position_y</name>
+          <field_number>194</field_number>
+          <field_location unit="byte">2623</field_location>
+          <data_type>IEEE754MSBSingle</data_type>
+          <field_length unit="byte">4</field_length>
+          <description>Position of spacecraft in J2000 frame.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>sc_position_z</name>
+          <field_number>195</field_number>
+          <field_location unit="byte">2627</field_location>
+          <data_type>IEEE754MSBSingle</data_type>
+          <field_length unit="byte">4</field_length>
+          <description>Position of spacecraft in J2000 frame.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>sub_scpos_mercury_x</name>
+          <field_number>196</field_number>
+          <field_location unit="byte">2631</field_location>
+          <data_type>IEEE754MSBSingle</data_type>
+          <field_length unit="byte">4</field_length>
+          <description>Sub spacecraft vector x component in Mercury fixed
+            coordinates at the middle of the pixel.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>sub_scpos_mercury_y</name>
+          <field_number>197</field_number>
+          <field_location unit="byte">2635</field_location>
+          <data_type>IEEE754MSBSingle</data_type>
+          <field_length unit="byte">4</field_length>
+          <description>Sub spacecraft vector y component in Mercury fixed
+            coordinates at the middle of the pixel.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>sub_scpos_mercury_z</name>
+          <field_number>198</field_number>
+          <field_location unit="byte">2639</field_location>
+          <data_type>IEEE754MSBSingle</data_type>
+          <field_length unit="byte">4</field_length>
+          <description>Sub spacecraft vector z component in Mercury fixed
+            coordinates at the middle of the pixel.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>sun_position_x</name>
+          <field_number>199</field_number>
+          <field_location unit="byte">2643</field_location>
+          <data_type>IEEE754MSBSingle</data_type>
+          <field_length unit="byte">4</field_length>
+          <description>Position of the Sun in Mercury fixed coord. System.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>sun_position_y</name>
+          <field_number>200</field_number>
+          <field_location unit="byte">2647</field_location>
+          <data_type>IEEE754MSBSingle</data_type>
+          <field_length unit="byte">4</field_length>
+          <description>Position of the Sun in Mercury fixed coord. system.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>sun_position_z</name>
+          <field_number>201</field_number>
+          <field_location unit="byte">2651</field_location>
+          <data_type>IEEE754MSBSingle</data_type>
+          <field_length unit="byte">4</field_length>
+          <description>Position of the Sun in Mercury fixed coord. system.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>delta_angle</name>
+          <field_number>202</field_number>
+          <field_location unit="byte">2655</field_location>
+          <data_type>IEEE754MSBDouble</data_type>
+          <field_length unit="byte">8</field_length>
+          <unit>degrees</unit>
+          <description>Difference between instrument +y direction and true
+            north at the middle of the pixel.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>avg_emission_angle</name>
+          <field_number>203</field_number>
+          <field_location unit="byte">2663</field_location>
+          <data_type>IEEE754MSBSingle</data_type>
+          <field_length unit="byte">4</field_length>
+          <unit>degrees</unit>
+          <description>Average emission angle (between normal to the surface
+            and direction from the surface to the spacecraft).</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>avg_inc_emi_cos_ratio</name>
+          <field_number>204</field_number>
+          <field_location unit="byte">2667</field_location>
+          <data_type>IEEE754MSBSingle</data_type>
+          <field_length unit="byte">4</field_length>
+          <description>Average ratio of the cosine of incidence angle to the
+            cosine of emission angle.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>avg_incidence_angle</name>
+          <field_number>205</field_number>
+          <field_location unit="byte">2671</field_location>
+          <data_type>IEEE754MSBSingle</data_type>
+          <field_length unit="byte">4</field_length>
+          <unit>degrees</unit>
+          <description>Average incidence angle.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>footprint_solid_angle</name>
+          <field_number>206</field_number>
+          <field_location unit="byte">2675</field_location>
+          <data_type>IEEE754MSBSingle</data_type>
+          <field_length unit="byte">4</field_length>
+          <unit>steradians</unit>
+          <description>Overall solid angle in the footprint contributing
+            to the spectrum (visible from the spacecraft), relatively the
+            instrument full field of view.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>total_eff_solid_angle</name>
+          <field_number>207</field_number>
+          <field_location unit="byte">2679</field_location>
+          <data_type>IEEE754MSBSingle</data_type>
+          <field_length unit="byte">4</field_length>
+          <unit>steradians</unit>
+          <description>Overall solid angle of the footprint contributing
+            to the spectrum (lit by the sun and visible from the spacecraft)
+            and weighted by the response function of the collimator, 
+            relatively the instrument full field of view.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>total_illuminated_area</name>
+          <field_number>208</field_number>
+          <field_location unit="byte">2683</field_location>
+          <data_type>IEEE754MSBSingle</data_type>
+          <field_length unit="byte">4</field_length>
+          <unit>kilometers**2</unit>
+          <description>Total area of the footprint contributing to the spectrum 
+            (lit by the sun and visible from the spacecraft).</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>total_visible_area</name>
+          <field_number>209</field_number>
+          <field_location unit="byte">2687</field_location>
+          <data_type>IEEE754MSBSingle</data_type>
+          <field_length unit="byte">4</field_length>
+          <unit>kilometers**2</unit>
+          <description>Total area of the footprint visible from the spacecraft.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>fov_status</name>
+          <field_number>210</field_number>
+          <field_location unit="byte">2691</field_location>
+          <data_type>UnsignedByte</data_type>
+          <field_length unit="byte">1</field_length>
+          <description>
+	    	    Field of view 0 equals Field of view (FOV)
+            is completely off the planet. 1 equals The field of view
+            is totally on the planet and at least part of the footprint
+            is lit by the sun. 2 equals The field of view is totally on
+            the planet and is dark. (planet darkside). 3 equals Part of
+            the field of view is off the planet and at least one plate is
+            lit by the sun. 4 equals Part of the field of view is off the
+            planet and is dark.
+		      </description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc2_al_live_time</name>
+          <field_number>211</field_number>
+          <field_location unit="byte">2692</field_location>
+          <data_type>IEEE754MSBSingle</data_type>
+          <field_length unit="byte">4</field_length>
+          <unit>seconds</unit>
+          <description>Al filtered Xray actual integration time- the portion
+            of the period covered by this record in which the Al Xray sensor
+            was unmasked and Integrating.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc2_al_valid_channel_hi</name>
+          <field_number>212</field_number>
+          <field_location unit="byte">2696</field_location>
+          <data_type>IEEE754MSBSingle</data_type>
+          <field_length unit="byte">4</field_length>
+          <description>Al filtered X-Ray rise time high channel.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc2_al_valid_channel_low</name>
+          <field_number>213</field_number>
+          <field_location unit="byte">2700</field_location>
+          <data_type>IEEE754MSBSingle</data_type>
+          <field_length unit="byte">4</field_length>
+          <description>Al filtered X-Ray rise time low channel.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc2_al_real_gain</name>
+          <field_number>214</field_number>
+          <field_location unit="byte">2704</field_location>
+          <data_type>IEEE754MSBSingle</data_type>
+          <field_length unit="byte">4</field_length>
+          <unit>keV/Ch.</unit>
+          <description>Measured gain of GPC2-Al detector in keV/ch.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc2_al_real_zero</name>
+          <field_number>215</field_number>
+          <field_location unit="byte">2708</field_location>
+          <data_type>IEEE754MSBSingle</data_type>
+          <field_length unit="byte">4</field_length>
+          <unit>keV</unit>
+          <description>Measured zero offset of GPC2-Al detector in keV.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc1_mg_live_time</name>
+          <field_number>216</field_number>
+          <field_location unit="byte">2712</field_location>
+          <data_type>IEEE754MSBSingle</data_type>
+          <field_length unit="byte">4</field_length>
+          <unit>seconds</unit>
+          <description>Mg filtered Xray actual integration time (sec.).</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc1_mg_valid_channel_hi</name>
+          <field_number>217</field_number>
+          <field_location unit="byte">2716</field_location>
+          <data_type>IEEE754MSBSingle</data_type>
+          <field_length unit="byte">4</field_length>
+          <description>
+		        Mg filtered Xray rise time valid discriminator
+            threshold; events with energy exceeding the threshold will be
+            rejected based on the rise time discrimination flag - the most
+            recently cmded value for this.
+		      </description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc1_mg_valid_channel_low</name>
+          <field_number>218</field_number>
+          <field_location unit="byte">2720</field_location>
+          <data_type>IEEE754MSBSingle</data_type>
+          <field_length unit="byte">4</field_length>
+          <description>Mg filtered Xray lower level discriminator 
+            threshold; events with energy less than the threshold will be rejected 
+            - the most recently cmded value for this threshold.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc1_mg_real_gain</name>
+          <field_number>219</field_number>
+          <field_location unit="byte">2724</field_location>
+          <data_type>IEEE754MSBSingle</data_type>
+          <field_length unit="byte">4</field_length>
+          <unit>keV/Ch.</unit>
+          <description>Measured gain of GPC1-Mg detector in keV/ch.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc1_mg_real_zero</name>
+          <field_number>220</field_number>
+          <field_location unit="byte">2728</field_location>
+          <data_type>IEEE754MSBSingle</data_type>
+          <field_length unit="byte">4</field_length>
+          <unit>keV</unit>
+          <description>Measured zero offset of GPC1-Mg detector in keV.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc3_un_live_time</name>
+          <field_number>221</field_number>
+          <field_location unit="byte">2732</field_location>
+          <data_type>IEEE754MSBSingle</data_type>
+          <field_length unit="byte">4</field_length>
+          <unit>seconds</unit>
+          <description>Unfiltered Xray actual integration time (sec.) - the
+            portion of the period covered by this record in which the
+            unfiltered Xray sensor was unmasked and integrating.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc3_un_valid_channel_hi</name>
+          <field_number>222</field_number>
+          <field_location unit="byte">2736</field_location>
+          <data_type>IEEE754MSBSingle</data_type>
+          <field_length unit="byte">4</field_length>
+          <description>Highest channel of the spectrum in original
+            (no calibration) or new (after calibration) energy scale.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc3_un_valid_channel_low</name>
+          <field_number>223</field_number>
+          <field_location unit="byte">2740</field_location>
+          <data_type>IEEE754MSBSingle</data_type>
+          <field_length unit="byte">4</field_length>
+          <description>Lowest channel of the spectrum in original
+            (no calibration) or new (after calibration) energy scale.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc3_un_real_gain</name>
+          <field_number>224</field_number>
+          <field_location unit="byte">2744</field_location>
+          <data_type>IEEE754MSBSingle</data_type>
+          <field_length unit="byte">4</field_length>
+          <unit>keV/Ch.</unit>
+          <description>Measured gain of GPC3-UN detector in keV/ch.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>gpc3_un_real_zero</name>
+          <field_number>225</field_number>
+          <field_location unit="byte">2748</field_location>
+          <data_type>IEEE754MSBSingle</data_type>
+          <field_length unit="byte">4</field_length>
+          <unit>keV</unit>
+          <description>Measured zero offset of GPC3-UN detector in keV.</description>
+        </Field_Binary>
+        <Field_Binary>
+          <name>sax_live_time</name>
+          <field_number>226</field_number>
+          <field_location unit="byte">2752</field_location>
+          <data_type>IEEE754MSBSingle</data_type>
+          <field_length unit="byte">4</field_length>
+          <unit>seconds</unit>
+          <description>Live time of the solar monitor.</description>
+        </Field_Binary>
+      </Record_Binary>
+    </Table_Binary>
+  </File_Area_Observational>
+  <File_Area_Observational_Supplemental>
+    <File>
+      <file_name>xrscdr2013122.lbl</file_name>
+    </File>
+    <Stream_Text>
+      <offset unit="byte">0</offset>
+      <parsing_standard_id>PDS3</parsing_standard_id>
+      <description>Original PDS3 label</description>
+      <record_delimiter>Carriage-Return Line-Feed</record_delimiter>
+    </Stream_Text>
+  </File_Area_Observational_Supplemental>
+</Product_Observational>

@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+
+<?xml-model href="https://pds.nasa.gov/pds4/pds/v1/PDS4_PDS_1A10.sch"
+  schematypens="http://purl.oclc.org/dsdl/schematron"?>
+<?xml-model href="https://pds.nasa.gov/pds4/mission/mess/v1/PDS4_MESS_1B00_1020.sch"
+  schematypens="http://purl.oclc.org/dsdl/schematron"?>
+
+<Product_Observational xmlns="http://pds.nasa.gov/pds4/pds/v1" 
+    xmlns:mess="http://pds.nasa.gov/pds4/mission/mess/v1" 
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+    xsi:schemaLocation="http://pds.nasa.gov/pds4/pds/v1 https://pds.nasa.gov/pds4/pds/v1/PDS4_PDS_1A10.xsd      http://pds.nasa.gov/pds4/mission/mess/v1 https://pds.nasa.gov/pds4/mission/mess/v1/PDS4_MESS_1B00_1020.xsd">
+  <Identification_Area>
+    <logical_identifier>urn:nasa:pds:mess_xrs_derived:data_footprints:xrs_fp_2_010160042_csv</logical_identifier>
+    <version_id>1.0</version_id>
+    <title>MESSENGER XRS RDR Footprint product: xrs_fp_2_010160042_csv</title>
+    <information_model_version>1.10.1.0</information_model_version>
+    <product_class>Product_Observational</product_class>
+    <Modification_History>
+      <Modification_Detail>
+        <modification_date>2018-06-13</modification_date>
+        <version_id>1.0</version_id>
+        <description>PDS4 migrated product.</description>
+      </Modification_Detail>
+    </Modification_History>
+  </Identification_Area>
+  <Observation_Area>
+    <Time_Coordinates>
+      <start_date_time>2013-05-06T10:27:22Z</start_date_time>
+      <stop_date_time>2013-05-06T10:30:42Z</stop_date_time>
+    </Time_Coordinates>
+    <Investigation_Area>
+      <name>MESSENGER</name>
+      <type>Mission</type>
+      <Internal_Reference>
+        <lid_reference>urn:nasa:pds:context:investigation:mission.messenger</lid_reference>
+        <reference_type>data_to_investigation</reference_type>
+      </Internal_Reference>
+    </Investigation_Area>
+    <Observing_System>
+      <Observing_System_Component>
+        <name>MESSENGER</name>
+        <type>Spacecraft</type>
+        <Internal_Reference>
+          <lid_reference>urn:nasa:pds:context:instrument_host:spacecraft.mess</lid_reference>
+          <reference_type>is_instrument_host</reference_type>
+        </Internal_Reference>
+      </Observing_System_Component>
+      <Observing_System_Component>
+        <name>X-Ray Spectrometer</name>
+        <type>Instrument</type>
+        <Internal_Reference>
+          <lid_reference>urn:nasa:pds:context:instrument:xrs.mess</lid_reference>
+          <reference_type>is_instrument</reference_type>
+        </Internal_Reference>
+      </Observing_System_Component>
+    </Observing_System>
+    <Target_Identification>
+      <name>Mercury</name>
+      <type>Planet</type>
+      <Internal_Reference>
+        <lid_reference>urn:nasa:pds:context:target:planet.mercury</lid_reference>
+        <reference_type>data_to_target</reference_type>
+      </Internal_Reference>
+    </Target_Identification>
+    <Mission_Area>
+      <mess:MESSENGER>
+        <mess:spacecraft_clock_start_count>2/010160042</mess:spacecraft_clock_start_count>
+        <mess:spacecraft_clock_stop_count>2/010160242</mess:spacecraft_clock_stop_count>
+        <mess:standard_data_product_id>xrsrdr</mess:standard_data_product_id>
+        <mess:software_name>xmap</mess:software_name>
+        <mess:software_version_id>1.0</mess:software_version_id>
+      </mess:MESSENGER>
+    </Mission_Area>
+  </Observation_Area>
+  <File_Area_Observational>
+    <File>
+      <file_name>xrs_fp_2_010160042.csv</file_name>
+      <creation_date_time>2016-12-10T12:55:48Z</creation_date_time>
+    </File>
+    <Table_Delimited>
+      <offset unit="byte">0</offset>
+      <parsing_standard_id>PDS DSV 1</parsing_standard_id>
+      <description>This table contains a set of points that form the perimeter
+        of the planetary footprint from which the corresponding CDR spectra
+        were obtained.</description>
+      <records>132</records>
+      <record_delimiter>Carriage-Return Line-Feed</record_delimiter>
+      <field_delimiter>Comma</field_delimiter>
+      <Record_Delimited>
+        <fields>2</fields>
+        <groups>0</groups>
+        <Field_Delimited>
+          <name>latitude</name>
+          <field_number>1</field_number>
+          <data_type>ASCII_Real</data_type>
+          <maximum_field_length unit="byte">7</maximum_field_length>
+          <description>Latitude in Mercury-fixed coordinates of 
+            this vertex in the footprint perimeter.</description>
+        </Field_Delimited>
+        <Field_Delimited>
+          <name>longitude</name>
+          <field_number>2</field_number>
+          <data_type>ASCII_Real</data_type>
+          <maximum_field_length unit="byte">7</maximum_field_length>
+          <description>East longitude in Mercury-fixed 
+            coordinates of this vertex in the footprint perimeter.</description>
+        </Field_Delimited>
+      </Record_Delimited>
+    </Table_Delimited>
+  </File_Area_Observational>
+  <File_Area_Observational_Supplemental>
+    <File>
+      <file_name>xrs_fp_2_010160042.lbl</file_name>
+    </File>
+    <Stream_Text>
+      <offset unit="byte">0</offset>
+      <parsing_standard_id>PDS3</parsing_standard_id>
+      <description>Original PDS3 label</description>
+      <record_delimiter>Carriage-Return Line-Feed</record_delimiter>
+    </Stream_Text>
+  </File_Area_Observational_Supplemental>
+</Product_Observational>
