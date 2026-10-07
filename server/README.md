@@ -31,9 +31,20 @@ This was built using uv, Docker and uvicorn in development
 
 ### Load with initial data
 
-Load the XRS calibrated data with `database/CDR_Loader.py`. The `/api/xrs`
-endpoint can return spatial results after footprint polygons have been loaded
-into the `xrs.footprint` column.
+From the repository root, load XRS calibrated data for a day with:
+
+    python -m database.load_cds_records 2013-04-14
+
+The command downloads that day's CDR files to `database/xrs_pds` by default,
+then loads them into the `xrs` table. Set `DATABASE_URL` in the environment,
+the repository `.env`, or `server/.env` for the database connection. To load
+files already on disk without downloading them again, add `--rerun`. The
+downloader is an internal part of this command, so the normal workflow always
+downloads selected files before loading them. Use `--out <directory>` to
+choose a different output directory.
+
+The `/api/xrs` endpoint can return spatial results after footprint polygons
+have been loaded into the `xrs.footprint` column.
 
 #### Messenger XRS
 

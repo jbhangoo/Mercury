@@ -15,7 +15,7 @@ dependencies = [
 ]
 
 [tool.pytest.ini_options]
-testpaths = ["tests/server"]
+testpaths = ["tests/server", "tests/database"]
 pythonpath = ["server"]
 
 [dependency-groups]
