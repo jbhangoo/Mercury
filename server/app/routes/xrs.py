@@ -2,45 +2,12 @@ import logging
 from datetime import timezone
 
 from fastapi import APIRouter, HTTPException, Query, Request
-from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
+
+from app.db import find_xrs_observations_covering_point
 
 xrs_router = APIRouter()
 log = logging.getLogger(__name__)
-
-XRS_AT_POINT = text("""
-    SELECT
-        id,
-        source_file,
-        met,
-        orbit_number,
-        observed_start,
-        observed_end,
-        fov_status,
-        intersection,
-        data_quality,
-        center_lon,
-        center_lat,
-        spacecraft_altitude_km,
-        solar_flare_detected,
-        solar_monitor_rate,
-        solar_monitor_spect_shift,
-        solar_intensity,
-        solar_intensity_source,
-        gpc1_mg_spectrum,
-        gpc2_al_spectrum,
-        gpc3_un_spectrum,
-        solar_mon_spectrum,
-        housekeeping
-    FROM xrs
-    WHERE footprint IS NOT NULL
-      AND ST_Covers(
-          footprint,
-          ST_SetSRID(ST_MakePoint(:lon, :lat), 910001)
-      )
-    ORDER BY observed_start DESC, id DESC
-    LIMIT :limit
-""")
 
 @xrs_router.get("/xrs")
 def get_xrs_details(
@@ -57,12 +24,12 @@ def get_xrs_details(
     Records without footprints are not spatially matched.
     """
     try:
-        with request.app.state.db_engine.connect() as connection:
-            result = connection.execute(
-                XRS_AT_POINT,
-                {"lon": lon, "lat": lat, "limit": limit + 1},
-            ).mappings()
-            rows = result.all()
+        rows = find_xrs_observations_covering_point(
+            request.app.state.db_engine,
+            lon,
+            lat,
+            limit + 1,
+        )
     except SQLAlchemyError as exc:
         log.exception("Failed to retrieve XRS observations at lon=%s, lat=%s", lon, lat)
         raise HTTPException(status_code=503, detail="XRS database is unavailable") from exc

@@ -162,12 +162,22 @@ def download_products(
                 writer.writerow([relative, status, error])
                 if status == "failed":
                     print(f"FAILED {relative}: {error}", file=sys.stderr)
+                elif status == "skipped":
+                    print(f"SKIPPED {relative}: already on disk")
                 elif error:
                     print(f"WARNING {relative}: {error}", file=sys.stderr)
 
             completed = min(start_index + len(batch), len(todo))
-            print(f"{completed}/{len(todo)} {counts}", flush=True)
+            print(f"{completed}/{len(todo)} files processed", flush=True)
+            if counts["failed"]:
+                print(f"  {counts['failed']} failed!", file=sys.stderr)
+            if counts["skipped"]:
+                print(f"  {counts['skipped']} skipped.", file=sys.stderr)
 
     problems += counts["failed"]
-    print(f"Done: {counts}. Output in {os.path.abspath(out)}")
+    print(f"Wrote {counts['downloaded']} file(s) to {os.path.abspath(out)}")
+    if counts["skipped"]:
+        print(f"   {counts['skipped']} file(s) already on disk -- skipped")
+    if counts["failed"]:
+        print(f"   {counts['failed']} file(s) failed!", file=sys.stderr)
     return 1 if problems else 0

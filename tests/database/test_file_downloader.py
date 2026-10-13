@@ -2,6 +2,7 @@ import hashlib
 
 from database.pds2db.file_downloader import download, list_dir
 from database.pds2db.pds4_checksum import verify_file
+from database.pds2db import xrs_downloader
 
 
 class FakeResponse:
@@ -142,3 +143,38 @@ def test_download_removes_partial_file_after_size_mismatch(tmp_path):
     assert "size mismatch" in result[2]
     assert not destination.exists()
     assert not (destination.parent / "product.csv.part").exists()
+
+
+def test_download_products_names_skipped_file_and_counts_processed(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(xrs_downloader, "make_session", lambda *args, **kwargs: object())
+    monkeypatch.setattr(
+        xrs_downloader,
+        "crawl",
+        lambda session, root, start, end, workers: (
+            [
+                (root + "collection_data_cdr.xml", 10),
+                (root + "2013/06/30/xrscdr2013181.dat", 100),
+                (root + "2013/06/30/xrscdr2013181.xml", 20),
+            ],
+            [],
+        ),
+    )
+
+    def fake_download(session, url, size, relative, destination, verifier=None):
+        status = "skipped" if relative.endswith("collection_data_cdr.xml") else "downloaded"
+        return relative, status, ""
+
+    monkeypatch.setattr(xrs_downloader, "download", fake_download)
+
+    assert xrs_downloader.download_products(
+        "cdr",
+        out=tmp_path,
+        start_date="2013-06-30",
+        end_date="2013-06-30",
+    ) == 0
+
+    output = capsys.readouterr().out
+    assert "SKIPPED data/collection_data_cdr.xml: already on disk" in output
+    assert "3/3 files processed" in output
+    assert "Wrote 2 file(s)" in output
+    assert "1 file(s) already on disk -- skipped" in output

@@ -105,7 +105,7 @@ class CDRLoader:
         xml_path: str | Path | None = None,
         keep_housekeeping: bool | None = None
     ) -> int:
-        """Loads a single CDR .dat file in a single transaction."""
+        """Loads a file atomically; return the number of rows inserted or updated."""
         dat_path = Path(dat_path)
         rows = self.reader.read(dat_path, xml_path)
         keep = self.keep_housekeeping if keep_housekeeping is None else keep_housekeeping

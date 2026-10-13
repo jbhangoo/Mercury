@@ -80,7 +80,7 @@ def main(argv: list[str] | None = None) -> int:
     out = Path(args.out)
 
     if not args.rerun and not args.dry_run and download_day(out, day) != 0:
-        print("Download failed; nothing loaded.", file=sys.stderr)
+        print(f"{day}: failed (nothing downloaded or inserted).", file=sys.stderr)
         return 1
 
     files = day_files(out, day)
@@ -94,7 +94,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Missing XML labels for {', '.join(missing)}; the label defines the record layout.", file=sys.stderr)
         return 2
 
-    print(f"{day}: {len(files)} file(s): {', '.join(f.name for f in files)}")
+    print(f"{day}: Found {len(files)} file(s) at PDS: {', '.join(f.name for f in files)}")
     if args.dry_run:
         return 0
 
@@ -116,16 +116,18 @@ def main(argv: list[str] | None = None) -> int:
             try:
                 written = loader.load_file(path)
                 total += written
-                print(f"  {path.name}: {written} records")
+                print(f"  {path.name}: {written} records upserted (inserted or updated)")
             except Exception as exc:               # report and keep going with the day's other files
                 failures.append((path.name, exc))
                 print(f"  {path.name}: FAILED: {exc}", file=sys.stderr)
     finally:
         engine.dispose()
 
-    print(f"{day}: {total} records loaded from {len(files) - len(failures)} of {len(files)} file(s)")
+    print(
+        f"{day}: {total} records upserted (inserted or updated) "
+        f"from {len(files) - len(failures)}/{len(files)} file(s)"
+    )
     return 1 if failures else 0
-
 
 if __name__ == "__main__":
     sys.exit(main())
