@@ -1,10 +1,15 @@
-"""Internal downloader for MESSENGER XRS products from the PDS Geosciences Node.
+"""
+Internal downloader for MESSENGER XRS products from the PDS Geosciences Node.
 
 The downloader selects the extensions needed by the XRS database loader and
 verifies files against an MD5 checksum when one is published in the PDS4 XML
 label. Downloads are also checked against the archive listing's file size.
-A failed checksum deletes the file and is reported as an error. Use
-``database.load_cds_records`` to download CDR files and load them into the
+A failed checksum deletes the file and is reported as an error.
+
+``database.load_cds_records`` uses this to download CDR files and load them into the
+database in one operation.
+
+``database.load_rdr_records`` uses this to download RDR files and load them into the
 database in one operation.
 """
 import csv
@@ -95,10 +100,7 @@ def download_products(
 
     if data_type == "rdr":
         data_root = RDR_DATA
-        roots = [
-            f"{data_root.rstrip('/')}/{directory}/"
-            for directory in ("footprints", "maps")
-        ]
+        roots = [f"{data_root.rstrip('/')}/footprints/"]
     else:
         data_root = CDR_DATA
         roots = [data_root]

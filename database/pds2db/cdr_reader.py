@@ -160,7 +160,7 @@ class CDRReader:
         return read_cdr(
             dat_path,
             xml_path,
-            native=self.native if native is None else self.native
+            native=self.native if native is None else native
         )
 
     @staticmethod

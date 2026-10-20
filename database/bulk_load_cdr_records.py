@@ -1,8 +1,8 @@
-"""Download and load the listed CDR days, reporting progress for each day.
+"""Download and load the listed CDR records for a month, reporting progress for each day.
 
 Run from root directory with:
 
-    python database/bulk_load_cds_records.py
+    python database/bulk_load_cdr_records.py
 
 The daily loader writes products under ``database/xrs_pds``. Add or remove
 dates in ``DAYS`` to change the catch-up range.
@@ -15,8 +15,8 @@ from datetime import date
 from pathlib import Path
 
 
-MONTH = 10
-LAST_DAY = 31
+MONTH = 11
+LAST_DAY = 30
 DAYS = tuple(date(2013, MONTH, day) for day in range(1, LAST_DAY + 1))
 
 DATABASE_DIR = Path(__file__).resolve().parent
@@ -32,7 +32,7 @@ def main() -> int:
             [
                 sys.executable,
                 "-m",
-                "database.load_cds_records",
+                "database.load_cdr_records",
                 day_text,
                 "--out",
                 str(OUTPUT_DIR),

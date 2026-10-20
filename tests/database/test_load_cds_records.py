@@ -1,4 +1,4 @@
-from database import load_cds_records
+from database import load_cdr_records
 
 
 class FakeEngine:
@@ -23,11 +23,11 @@ def _prepare_day_files(out):
 
 def test_main_reports_rows_as_upserted(tmp_path, monkeypatch, capsys):
     _prepare_day_files(tmp_path)
-    monkeypatch.setattr(load_cds_records, "resolve_dsn", lambda: "postgresql+psycopg://test")
+    monkeypatch.setattr(load_cdr_records, "resolve_dsn", lambda: "postgresql+psycopg://test")
     monkeypatch.setattr("sqlalchemy.create_engine", lambda dsn: FakeEngine())
     monkeypatch.setattr("database.pds2db.cdr_loader.CDRLoader", SuccessfulLoader)
 
-    assert load_cds_records.main(["2013-04-11", "--rerun", "--out", str(tmp_path)]) == 0
+    assert load_cdr_records.main(["2013-04-11", "--rerun", "--out", str(tmp_path)]) == 0
 
     output = capsys.readouterr().out
     assert "3 records upserted (inserted or updated)" in output
@@ -36,7 +36,7 @@ def test_main_reports_rows_as_upserted(tmp_path, monkeypatch, capsys):
 
 def test_main_reports_database_insertion_failure(tmp_path, monkeypatch, capsys):
     _prepare_day_files(tmp_path)
-    monkeypatch.setattr(load_cds_records, "resolve_dsn", lambda: "postgresql+psycopg://test")
+    monkeypatch.setattr(load_cdr_records, "resolve_dsn", lambda: "postgresql+psycopg://test")
     monkeypatch.setattr("sqlalchemy.create_engine", lambda dsn: FakeEngine())
 
     class FailingLoader:
@@ -48,7 +48,7 @@ def test_main_reports_database_insertion_failure(tmp_path, monkeypatch, capsys):
 
     monkeypatch.setattr("database.pds2db.cdr_loader.CDRLoader", FailingLoader)
 
-    assert load_cds_records.main(["2013-04-11", "--rerun", "--out", str(tmp_path)]) == 1
+    assert load_cdr_records.main(["2013-04-11", "--rerun", "--out", str(tmp_path)]) == 1
 
     captured = capsys.readouterr()
     assert "xrscdr2013101.dat: FAILED: database write failed" in captured.err

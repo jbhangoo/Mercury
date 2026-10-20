@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """
-Load every CDS record file for one day into the xrs table.
+Load every CDR record file for one day into the xrs table.
 
-    python -m database.load_cds_records 2013-04-11
-    python -m database.load_cds_records 2013-04-11 --rerun
-    python -m database.load_cds_records 2013-04-11 --dry-run
-    python -m database.load_cds_records 2013-04-11 --out C:\\xrs_pds
+    python -m database.load_cdr_records 2013-04-11
+    python -m database.load_cdr_records 2013-04-11 --rerun
+    python -m database.load_cdr_records 2013-04-11 --dry-run
+    python -m database.load_cdr_records 2013-04-11 --out C:\\xrs_pds
 
 The day's files are expected at <out>/data/YYYY/MM/DD/xrscdr*.dat, each with its
 .xml label beside it. By default, the day's files are downloaded from PDS first.
-Use --rerun to load files already on disk without downloading. Each file is
+Use --rerun to insert data from files already on disk without downloading. Each file is
 loaded in its own transaction, so a bad file is reported and skipped without
 undoing the others. Loading is idempotent: rerunning a day updates its rows in
 place. Exit status: 0 all loaded, 1 some file failed, 2 nothing to load / bad
@@ -32,9 +32,9 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 
 if __package__:
-    from .pds2db.xrs_downloader import download_products
+    from .pds2db.pds_downloader import download_products
 else:
-    from pds2db.xrs_downloader import download_products
+    from database.pds2db.pds_downloader import download_products
 
 
 def resolve_dsn() -> str | None:

@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, Mock
 from sqlalchemy.dialects import postgresql
 
 from app.db import find_xrs_observations_covering_point
-from server.app.db.access import db_xrs_covers_point
+from server.app.db.access import db_xrs_covers_point, db_xrs_insert
 
 
 def test_db_xrs_covers_point_builds_spatial_detail_query():
@@ -30,3 +30,23 @@ def test_db_xrs_covers_point_builds_spatial_detail_query():
     assert "ORDER BY xrs.observed_start DESC, xrs.id DESC" in sql
     assert "LIMIT" in sql
     assert compiled.params["ST_SetSRID_1"] == 910001
+
+
+def test_db_xrs_insert_executes_upsert_atomically():
+    engine = Mock()
+    connection = MagicMock()
+    transaction = MagicMock()
+    transaction.__enter__.return_value = connection
+    engine.begin.return_value = transaction
+    records = [{"source_file": "xrscdr2013101.dat", "source_id": "123"}]
+
+    db_xrs_insert(engine, records)
+
+    engine.begin.assert_called_once_with()
+    statement, parameters = connection.execute.call_args.args
+    assert parameters is records
+    sql = str(statement.compile(dialect=postgresql.dialect()))
+    assert "INSERT INTO xrs" in sql
+    assert "ST_MakePoint" in sql
+    assert "ON CONFLICT (source_file, source_id) DO UPDATE" in sql
+    assert "housekeeping" in sql

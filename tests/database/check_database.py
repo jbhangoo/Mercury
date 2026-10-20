@@ -18,7 +18,7 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 if str(REPOSITORY_ROOT) not in sys.path:
     sys.path.insert(0, str(REPOSITORY_ROOT))
 
-from database.sqlalchemy_db import create_database_engine
+from server.app.db.sqlalchemy import create_database_engine
 
 
 def _connection_failure(error: SQLAlchemyError, database: str, username: str) -> tuple[str, str]:

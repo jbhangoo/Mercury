@@ -2,7 +2,7 @@ import hashlib
 
 from database.pds2db.file_downloader import download, list_dir
 from database.pds2db.pds4_checksum import verify_file
-from database.pds2db import xrs_downloader
+from database.pds2db import pds_downloader
 
 
 class FakeResponse:
@@ -146,9 +146,9 @@ def test_download_removes_partial_file_after_size_mismatch(tmp_path):
 
 
 def test_download_products_names_skipped_file_and_counts_processed(tmp_path, monkeypatch, capsys):
-    monkeypatch.setattr(xrs_downloader, "make_session", lambda *args, **kwargs: object())
+    monkeypatch.setattr(pds_downloader, "make_session", lambda *args, **kwargs: object())
     monkeypatch.setattr(
-        xrs_downloader,
+        pds_downloader,
         "crawl",
         lambda session, root, start, end, workers: (
             [
@@ -164,9 +164,9 @@ def test_download_products_names_skipped_file_and_counts_processed(tmp_path, mon
         status = "skipped" if relative.endswith("collection_data_cdr.xml") else "downloaded"
         return relative, status, ""
 
-    monkeypatch.setattr(xrs_downloader, "download", fake_download)
+    monkeypatch.setattr(pds_downloader, "download", fake_download)
 
-    assert xrs_downloader.download_products(
+    assert pds_downloader.download_products(
         "cdr",
         out=tmp_path,
         start_date="2013-06-30",
@@ -178,3 +178,23 @@ def test_download_products_names_skipped_file_and_counts_processed(tmp_path, mon
     assert "3/3 files processed" in output
     assert "Wrote 2 file(s)" in output
     assert "1 file(s) already on disk -- skipped" in output
+
+
+def test_download_products_rdr_crawls_only_footprints(tmp_path, monkeypatch):
+    roots = []
+    monkeypatch.setattr(pds_downloader, "make_session", lambda *args, **kwargs: object())
+
+    def fake_crawl(session, root, start, end, workers):
+        roots.append(root)
+        return [], []
+
+    monkeypatch.setattr(pds_downloader, "crawl", fake_crawl)
+
+    assert pds_downloader.download_products(
+        "rdr",
+        out=tmp_path,
+        start_date="2013-04-11",
+        end_date="2013-04-11",
+    ) == 0
+
+    assert roots == [f"{pds_downloader.RDR_DATA.rstrip('/')}/footprints/"]

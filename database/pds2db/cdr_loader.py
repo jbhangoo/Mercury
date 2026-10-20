@@ -10,8 +10,9 @@ from pathlib import Path
 import numpy as np
 from sqlalchemy.engine import Engine
 
+from server.app.db.access import db_xrs_insert
+
 from .consts import (
-    INSERT_SQL,
     LOADER_VERSION,
     OPTIONAL_COLUMNS,
     OWN_COLUMNS,
@@ -112,8 +113,7 @@ class CDRLoader:
         
         records = list(_build_records(rows, dat_path.name.lower(), keep))
         
-        with self.engine.begin() as connection:
-            connection.execute(INSERT_SQL, records)
+        db_xrs_insert(self.engine, records)
             
         return len(records)
 
