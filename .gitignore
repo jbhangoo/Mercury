@@ -14,6 +14,7 @@ yarn-error.log*
 .pnp.js
 
 # Data files are stored in database/xrs_pds and are kept out of git.
+/xrs_pds/
 /database/xrs_pds/
 /database/backups/
 

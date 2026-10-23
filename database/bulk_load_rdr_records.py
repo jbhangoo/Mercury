@@ -21,7 +21,6 @@ DAYS = tuple(date(2013, MONTH, day) for day in range(1, LAST_DAY + 1))
 
 DATABASE_DIR = Path(__file__).resolve().parent
 REPOSITORY_ROOT = DATABASE_DIR.parent
-OUTPUT_DIR = DATABASE_DIR / "xrs_pds"
 
 def main() -> int:
     failures = []
@@ -34,8 +33,6 @@ def main() -> int:
                 "-m",
                 "database.load_rdr_records",
                 day_text,
-                "--out",
-                str(OUTPUT_DIR),
             ],
             cwd=REPOSITORY_ROOT,
             check=False,

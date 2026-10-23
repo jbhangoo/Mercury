@@ -40,8 +40,8 @@ then loads them into the `xrs` table. Set `DATABASE_URL` in the environment,
 the repository `.env`, or `server/.env` for the database connection. To load
 files already on disk without downloading them again, add `--rerun`. The
 downloader is an internal part of this command, so the normal workflow always
-downloads selected files before loading them. Use `--out <directory>` to
-choose a different output directory.
+downloads selected files before loading them. Files are always stored under
+`database/xrs_pds`.
 
 The `/api/xrs` endpoint can return spatial results after footprint radii have
 been loaded into `xrs.footprint_radius_km`.

@@ -1,3 +1,5 @@
+import pytest
+
 from database import load_cdr_records
 
 
@@ -22,12 +24,14 @@ def _prepare_day_files(out):
 
 
 def test_main_reports_rows_as_upserted(tmp_path, monkeypatch, capsys):
-    _prepare_day_files(tmp_path)
+    database_dir = tmp_path / "database"
+    _prepare_day_files(database_dir / "xrs_pds")
+    monkeypatch.setattr(load_cdr_records, "HERE", database_dir)
     monkeypatch.setattr(load_cdr_records, "resolve_dsn", lambda: "postgresql+psycopg://test")
     monkeypatch.setattr("sqlalchemy.create_engine", lambda dsn: FakeEngine())
     monkeypatch.setattr("database.pds2db.cdr_loader.CDRLoader", SuccessfulLoader)
 
-    assert load_cdr_records.main(["2013-04-11", "--rerun", "--out", str(tmp_path)]) == 0
+    assert load_cdr_records.main(["2013-04-11", "--rerun"]) == 0
 
     output = capsys.readouterr().out
     assert "3 records upserted (inserted or updated)" in output
@@ -35,7 +39,9 @@ def test_main_reports_rows_as_upserted(tmp_path, monkeypatch, capsys):
 
 
 def test_main_reports_database_insertion_failure(tmp_path, monkeypatch, capsys):
-    _prepare_day_files(tmp_path)
+    database_dir = tmp_path / "database"
+    _prepare_day_files(database_dir / "xrs_pds")
+    monkeypatch.setattr(load_cdr_records, "HERE", database_dir)
     monkeypatch.setattr(load_cdr_records, "resolve_dsn", lambda: "postgresql+psycopg://test")
     monkeypatch.setattr("sqlalchemy.create_engine", lambda dsn: FakeEngine())
 
@@ -48,8 +54,15 @@ def test_main_reports_database_insertion_failure(tmp_path, monkeypatch, capsys):
 
     monkeypatch.setattr("database.pds2db.cdr_loader.CDRLoader", FailingLoader)
 
-    assert load_cdr_records.main(["2013-04-11", "--rerun", "--out", str(tmp_path)]) == 1
+    assert load_cdr_records.main(["2013-04-11", "--rerun"]) == 1
 
     captured = capsys.readouterr()
     assert "xrscdr2013101.dat: FAILED: database write failed" in captured.err
     assert "0/1 file(s)" in captured.out
+
+
+def test_main_rejects_out_option():
+    with pytest.raises(SystemExit) as exc_info:
+        load_cdr_records.main(["2013-04-11", "--out", "custom"])
+
+    assert exc_info.value.code == 2

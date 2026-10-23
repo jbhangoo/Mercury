@@ -5,9 +5,8 @@ Load every CDR record file for one day into the xrs table.
     python -m database.load_cdr_records 2013-04-11
     python -m database.load_cdr_records 2013-04-11 --rerun
     python -m database.load_cdr_records 2013-04-11 --dry-run
-    python -m database.load_cdr_records 2013-04-11 --out C:\\xrs_pds
 
-The day's files are expected at <out>/data/YYYY/MM/DD/xrscdr*.dat, each with its
+The day's files are expected at database/xrs_pds/data/YYYY/MM/DD/xrscdr*.dat, each with its
 .xml label beside it. By default, the day's files are downloaded from PDS first.
 Use --rerun to insert data from files already on disk without downloading. Each file is
 loaded in its own transaction, so a bad file is reported and skipped without
@@ -67,7 +66,6 @@ def download_day(out: Path, day: date) -> int:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("day", help="UTC day to load, YYYY-MM-DD")
-    ap.add_argument("--out", default="xrs_pds", help="folder holding data/YYYY/MM/DD/... (default xrs_pds)")
     ap.add_argument("--rerun", action="store_true", help="load files already on disk without downloading")
     ap.add_argument("--dry-run", action="store_true", help="list files on disk without downloading or loading")
     args = ap.parse_args(argv)
@@ -77,7 +75,7 @@ def main(argv: list[str] | None = None) -> int:
         day = date.fromisoformat(args.day)
     except ValueError:
         ap.error(f"day must be YYYY-MM-DD, got {args.day!r}")
-    out = Path(args.out)
+    out = HERE / "xrs_pds"
 
     if not args.rerun and not args.dry_run and download_day(out, day) != 0:
         print(f"{day}: failed (nothing downloaded or inserted).", file=sys.stderr)

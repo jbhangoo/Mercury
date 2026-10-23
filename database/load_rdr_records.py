@@ -15,7 +15,6 @@ already applied is skipped unless --force is given.
     python -m database.load_rdr_records 2013-04-11 --rerun --force
     python -m database.load_rdr_records 2013-04-11 --dry-run
     python -m database.load_rdr_records 2013-04-11 --download-only
-    python -m database.load_rdr_records 2013-04-11 --out "C:\\path\\to\\xrs_pds"
 
 Use --download-only to download the day's products and verify that footprint CSVs
 and their XML labels are discoverable, without parsing records or connecting to
@@ -118,7 +117,6 @@ def download_day(out: Path, day: date) -> int:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("day", help="UTC day to load, YYYY-MM-DD")
-    ap.add_argument("--out", default="xrs_pds", help="folder holding footprints/YYYY/MM/DD/... (default xrs_pds)")
     ap.add_argument("--rerun", action="store_true", help="update based on files already on disk without downloading")
     ap.add_argument("--force", action="store_true", help="rewrite footprints that are already applied")
     ap.add_argument("--dry-run", action="store_true", help="list files on disk without downloading anything or updating database")
@@ -138,8 +136,7 @@ def main(argv: list[str] | None = None) -> int:
     except ValueError:
         ap.error(f"day must be YYYY-MM-DD, got {args.day!r}")
         
-    # Resolve absolute path to avoid relative directory context issues
-    out = Path(args.out).resolve()
+    out = HERE / "xrs_pds"
 
     if not args.rerun and not args.dry_run and download_day(out, day) != 0:
         print(f"{day}: failed (nothing downloaded and no records updated).", file=sys.stderr)

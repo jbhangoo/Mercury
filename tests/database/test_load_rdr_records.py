@@ -1,6 +1,8 @@
 from datetime import date
 from types import SimpleNamespace
 
+import pytest
+
 from database import load_rdr_records
 from database.pds2db.consts import (
     FOOTPRINT_NO_BORESIGHT,
@@ -11,7 +13,8 @@ from database.pds2db.consts import (
 
 
 def test_download_only_discovers_files_without_loading(tmp_path, monkeypatch, capsys):
-    out = tmp_path / "xrs_pds"
+    database_dir = tmp_path / "database"
+    out = database_dir / "xrs_pds"
     day_dir = out / "footprints" / "2013" / "04" / "11" / "22"
     day_dir.mkdir(parents=True)
     csv_path = day_dir / "xrs_fp_2_012362249.csv"
@@ -28,13 +31,9 @@ def test_download_only_discovers_files_without_loading(tmp_path, monkeypatch, ca
 
     monkeypatch.setattr(load_rdr_records, "download_day", fake_download_day)
     monkeypatch.setattr(load_rdr_records, "resolve_dsn", fail_if_database_accessed)
+    monkeypatch.setattr(load_rdr_records, "HERE", database_dir)
 
-    assert load_rdr_records.main([
-        "2013-04-11",
-        "--download-only",
-        "--out",
-        str(out),
-    ]) == 0
+    assert load_rdr_records.main(["2013-04-11", "--download-only"]) == 0
 
     assert downloaded == [(out.resolve(), date(2013, 4, 11))]
     assert "Found 1 CSV file(s) on disk" in capsys.readouterr().out
@@ -76,3 +75,10 @@ def test_report_counts_bitmap_statuses(capsys):
     assert "1 updated, 1 unchanged (already loaded), 1 not applied" in output.out
     assert "1 status 0x01, 1 status 0x02" in output.out
     assert "problem.csv: not applied: not applied" in output.err
+
+
+def test_main_rejects_out_option():
+    with pytest.raises(SystemExit) as exc_info:
+        load_rdr_records.main(["2013-04-11", "--out", "custom"])
+
+    assert exc_info.value.code == 2
