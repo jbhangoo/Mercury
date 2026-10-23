@@ -4,7 +4,7 @@ SQLAlchemy definition of the xrs table, used to build queries.
 The table itself is created by database/DB_Create.sql. This module mirrors it
 so the API can write ``select(xrs.c.met).where(...)`` instead of repeating
 column names in SQL strings; it is never used to create or migrate tables
-(constraints and indexes live only in the SQL). tests/server/test_db_schema.py
+(constraints and indexes live only in the SQL). tests/server/test_schema.py
 checks this module against that SQL, so a change to one without the other
 fails a test.
 
@@ -13,32 +13,15 @@ fails a test.
             .where(xrs.c.solar_flare_detected)
             .order_by(xrs.c.observed_start.desc()))
 
-Geometry columns (center, footprint) are declared but should rarely be
-selected: ask the database for what you need (center_lon/center_lat, or
-func.ST_AsGeoJSON(xrs.c.footprint)) rather than the raw geometry.
+Positions are plain latitude/longitude columns (degrees on a sphere), not
+geometry types: boresight_lat/boresight_lon is where the instrument was pointing,
+and footprint_radius_km is how far around that point the observation certainly
+covers.
 """
 from sqlalchemy import (
-    BigInteger, Boolean, Column, Computed, DateTime, Integer, MetaData, SmallInteger, Table, Text,
-    text,
+    BigInteger, Boolean, Column, DateTime, Integer, MetaData, SmallInteger, Table, Text, text,
 )
 from sqlalchemy.dialects.postgresql import ARRAY, DOUBLE_PRECISION, JSONB, REAL
-from sqlalchemy.types import UserDefinedType
-
-SRID = 910001   # spherical Mercury lon/lat CRS registered in DB_Create.sql
-
-
-class Geometry(UserDefinedType):
-    """A PostGIS geometry column: enough to declare it and use it with func.ST_*()."""
-
-    cache_ok = True
-
-    def __init__(self, geometry_type: str, srid: int = SRID) -> None:
-        self.geometry_type = geometry_type
-        self.srid = srid
-
-    def get_col_spec(self, **kw) -> str:
-        return f"geometry({self.geometry_type},{self.srid})"
-
 
 metadata = MetaData()
 
@@ -63,13 +46,15 @@ xrs = Table(
     # 0 off planet; 1 on planet, lit; 2 on planet, dark; 3 partly off, lit; 4 partly off, dark.
     Column("fov_status", SmallInteger, nullable=False),
     Column("intersection", Boolean, nullable=False),
+    # Bit 0 set = the packet's data length did not match the reported length.
     Column("data_quality", BigInteger, nullable=False),
 
-    # Boresight intercept and field-of-view outline; lon/lat are generated from center.
-    Column("center", Geometry("Point")),
-    Column("center_lon", DOUBLE_PRECISION, Computed("ST_X(center)", persisted=True)),
-    Column("center_lat", DOUBLE_PRECISION, Computed("ST_Y(center)", persisted=True)),
-    Column("footprint", Geometry("MultiPolygon")),
+    # Boresight intercept with the surface (NULL when it misses the planet), and the
+    # radius of the circle around it that lies inside the footprint (NULL until the
+    # footprint is loaded).
+    Column("boresight_lat", DOUBLE_PRECISION),
+    Column("boresight_lon", DOUBLE_PRECISION),
+    Column("footprint_radius_km", REAL),
     Column("spacecraft_altitude_km", REAL),
 
     # The instrument's own solar monitor, plus an optional external flux (W/m^2).
@@ -111,8 +96,9 @@ SUMMARY_COLUMNS = (
     xrs.c.fov_status,
     xrs.c.intersection,
     xrs.c.data_quality,
-    xrs.c.center_lon,
-    xrs.c.center_lat,
+    xrs.c.boresight_lat,
+    xrs.c.boresight_lon,
+    xrs.c.footprint_radius_km,
     xrs.c.spacecraft_altitude_km,
     xrs.c.solar_flare_detected,
     xrs.c.solar_monitor_rate,

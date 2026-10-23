@@ -3,8 +3,8 @@ Checks app.db.schema against the real DDL in database/DB_Create.sql.
 
 The CREATE TABLE statement is run in a throw-away schema of the database named
 by TEST_DATABASE_URL, then every column's name, type, nullability and
-generated-ness is compared with the SQLAlchemy Table. Requires PostGIS with the
-Mercury SRID registered (DB_Create.sql does that). Skipped if the variable is unset.
+generated-ness is compared with the SQLAlchemy Table. Skipped if the variable
+is unset.
 """
 import os
 import re
@@ -16,7 +16,7 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.engine import make_url
 
-from app.db.schema import SRID, xrs
+from app.db.schema import xrs
 
 URL = os.environ.get("TEST_DATABASE_URL")
 pytestmark = pytest.mark.skipif(not URL, reason="TEST_DATABASE_URL not set")
@@ -83,6 +83,8 @@ def test_types_nullability_and_generated_columns_match(live_columns):
     assert mismatches == {}
 
 
-def test_geometry_columns_use_the_mercury_srid(live_columns):
-    for name in ("center", "footprint"):
-        assert str(SRID) in live_columns[name][0]
+def test_boresight_columns_are_plain_nullable_numbers(live_columns):
+    assert live_columns["boresight_lat"] == ("doubleprecision", False, False)
+    assert live_columns["boresight_lon"] == ("doubleprecision", False, False)
+    assert live_columns["footprint_radius_km"] == ("real", False, False)
+    assert {"center", "center_lon", "center_lat", "footprint"}.isdisjoint(live_columns)

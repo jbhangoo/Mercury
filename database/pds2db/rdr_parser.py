@@ -1,149 +1,112 @@
 """
-Turns a footprint's perimeter vertices (see rdr_reader) into polygon geometry.
+Measures a footprint around the instrument's boresight point.
 
-The perimeter is stored as latitude and east longitude pairs, and longitudes run
-0 to 360. The table wants -180 to 180, and a footprint can straddle the +/-180
-meridian or encircle a pole, so a plain list of (lon, lat) pairs would give a
-polygon that wraps the wrong way around the planet. build_footprint_polygon()
-works in "unwrapped" longitudes instead:
+A footprint file (see rdr_reader) lists the perimeter of the surface an observation
+saw: latitude and east longitude pairs, longitudes 0 to 360. The database keeps no
+polygon. It keeps the boresight point from the CDR and one number from the footprint,
+the radius of the circle around that point which is certain to lie inside the
+footprint: the distance from the point to the nearest perimeter *vertex*. (The nearest
+point of an edge can be a little closer, but vertices are only about 0.2 degrees,
+roughly 10 km, apart, so the circle can poke out of the footprint by at most a few km.)
 
-- Longitude steps are taken the short way round (so 359.9 -> 0.1 is a 0.2 degree
-  step, not a jump), which makes the ring continuous even where the values wrap.
-- If the ring winds once around a pole (net longitude change of 360 degrees), it
-  is closed along that pole's edge of the map (latitude +/-90), so the polygon
-  covers the cap between the perimeter and the pole.
-- The ring is shifted by a multiple of 360 degrees to sit around longitude 0. It
-  may then extend past +/-180; footprint_geometry_sql() in rdr_consts.py makes
-  PostGIS cut it at the antimeridian and fold the overflow back.
+Everything is done with 3-D unit vectors on a sphere of Mercury's radius, so the
+antimeridian, the 0/360 wrap and the poles need no special handling.
 
-The result is a WKT polygon in unwrapped coordinates, not yet the final
-geometry. The SIS notes that pole-spanning footprints can contain a few
-anomalous interior vertices; PostGIS repairs the resulting self-overlaps.
+    from database.pds2db.rdr_parser import footprint_radius
+    result = footprint_radius(64.61, -169.11, vertices)
+    result.radius_km, result.inside
+
+The radius is only meaningful when the boresight point lies inside the perimeter.
+That is expected whenever the boresight hits the planet (the point is then part of
+the field of view's footprint), so footprint_radius() checks it and reports it.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
-from pathlib import Path
 
 import numpy as np
 
-REPEAT_TOLERANCE_DEGREES = 1e-9
-MIN_AREA_SQUARE_DEGREES = 1e-9
+from .consts import MERCURY_RADIUS_KM
 
-
-class DegenerateFootprint(ValueError):
-    """The perimeter does not enclose an area (too few distinct vertices, or all in a line)."""
+# A "nearest vertex" closer than this means the boresight point sits on the perimeter.
+MIN_RADIUS_KM = 1e-3
+# No footprint is anywhere near this big (the largest are a few thousand km across), so a
+# boresight point more than a quarter of the way round the planet from a vertex of its own
+# footprint cannot be inside it. It also keeps the azimuth sums in the inside test meaningful.
+MAX_VERTEX_ANGLE = np.pi / 2
 
 
 @dataclass(frozen=True)
-class FootprintPolygon:
-    ring: np.ndarray                 # (n, 2) closed ring of (lon, lat); lon may lie outside -180..180
-    pole: int                        # +1 or -1 if the perimeter encircles that pole, else 0
-    crosses_antimeridian: bool       # the ring extends past +/-180, so it will be split on load
-
-    @property
-    def vertex_count(self) -> int:
-        return len(self.ring) - 1
-
-    @property
-    def wkt(self) -> str:
-        points = ", ".join(f"{x:.6f} {y:.6f}" for x, y in self.ring)
-        return f"POLYGON(({points}))"
+class FootprintRadius:
+    radius_km: float        # great-circle distance from the boresight point to the nearest vertex
+    inside: bool            # the boresight point lies inside the perimeter
+    vertex_count: int
 
 
-def normalize_longitude(lon):
-    """East longitude in degrees mapped into [-180, 180)."""
-    return (np.asarray(lon, dtype=np.float64) + 180.0) % 360.0 - 180.0
+def unit_vectors(lat, lon) -> np.ndarray:
+    """(n, 3) unit vectors for latitudes and east longitudes in degrees."""
+    phi, lam = np.radians(np.atleast_1d(lat)), np.radians(np.atleast_1d(lon))
+    return np.column_stack([np.cos(phi) * np.cos(lam), np.cos(phi) * np.sin(lam), np.sin(phi)])
 
 
-def _wrap_delta(delta):
-    """A longitude difference mapped to the shortest signed equivalent, in [-180, 180)."""
-    return (np.asarray(delta, dtype=np.float64) + 180.0) % 360.0 - 180.0
+def _angles_from(center: np.ndarray, points: np.ndarray) -> np.ndarray:
+    """Angular distance in radians from `center` to each of `points` (stable for small angles)."""
+    return np.arctan2(np.linalg.norm(np.cross(center, points), axis=1), points @ center)
 
 
-def _drop_repeats(lat: np.ndarray, lon: np.ndarray):
-    """Remove consecutive repeated vertices, and a final vertex that repeats the first."""
-    keep = [0]
-    for i in range(1, len(lat)):
-        same_lat = abs(lat[i] - lat[keep[-1]]) <= REPEAT_TOLERANCE_DEGREES
-        same_lon = abs(_wrap_delta(lon[i] - lon[keep[-1]])) <= REPEAT_TOLERANCE_DEGREES
-        if not (same_lat and same_lon):
-            keep.append(i)
-    if len(keep) > 1:
-        first, last = keep[0], keep[-1]
-        if (abs(lat[last] - lat[first]) <= REPEAT_TOLERANCE_DEGREES
-                and abs(_wrap_delta(lon[last] - lon[first])) <= REPEAT_TOLERANCE_DEGREES):
-            keep.pop()
-    return lat[keep], lon[keep]
-
-
-def _shoelace_area(ring: np.ndarray) -> float:
-    x, y = ring[:, 0], ring[:, 1]
-    return 0.5 * float(np.dot(x[:-1], y[1:]) - np.dot(x[1:], y[:-1]))
-
-
-def build_footprint_polygon(vertices) -> FootprintPolygon:
-    """Polygon (in unwrapped longitude) for a footprint's perimeter vertices.
-
-    `vertices` is anything with "latitude" and "longitude" fields, such as the
-    array read_rdr() returns. Raises DegenerateFootprint if the perimeter
-    encloses no area, and ValueError if it winds more than once around a pole."""
+def _perimeter_vectors(vertices) -> np.ndarray:
     lat = np.asarray(vertices["latitude"], dtype=np.float64)
     lon = np.asarray(vertices["longitude"], dtype=np.float64)
+    if len(lat) < 3:
+        raise ValueError(f"footprint has only {len(lat)} vertices")
     if not (np.isfinite(lat).all() and np.isfinite(lon).all()):
         raise ValueError("footprint has non-finite coordinates")
-    if len(lat) == 0:
-        raise DegenerateFootprint("footprint has no vertices")
-
-    lat, lon = _drop_repeats(lat, lon)
-    if len(lat) < 3:
-        raise DegenerateFootprint(f"footprint has only {len(lat)} distinct vertices")
-
-    steps = _wrap_delta(np.diff(lon))                 # shortest signed step between neighbours
-    closing = float(_wrap_delta(lon[0] - lon[-1]))    # last vertex back to the first
-    turns = int(round((steps.sum() + closing) / 360.0))
-    if abs(turns) > 1:
-        raise ValueError(f"perimeter winds {abs(turns)} times around the pole")
-
-    unwrapped = lon[0] + np.concatenate(([0.0], np.cumsum(steps)))
-    points = np.column_stack([unwrapped, lat])
-    pole = 0
-    if turns:
-        pole = 1 if lat.mean() > 0 else -1
-        far = unwrapped[0] + 360.0 * turns            # the first vertex, one full turn along
-        edge = 90.0 * pole
-        points = np.vstack([points, [far, lat[0]], [far, edge], [unwrapped[0], edge]])
-
-    centre = 0.5 * (points[:, 0].min() + points[:, 0].max())
-    points[:, 0] -= 360.0 * round(centre / 360.0)     # centre the ring on longitude 0
-    ring = np.vstack([points, points[0]])
-
-    if abs(_shoelace_area(ring)) < MIN_AREA_SQUARE_DEGREES:
-        raise DegenerateFootprint("perimeter encloses no area")
-    crosses = bool(ring[:, 0].min() < -180.0 - 1e-9 or ring[:, 0].max() > 180.0 + 1e-9)
-    return FootprintPolygon(ring=ring, pole=pole, crosses_antimeridian=crosses)
+    return unit_vectors(lat, lon)
 
 
-def footprint_wkt(vertices) -> str:
-    return build_footprint_polygon(vertices).wkt
+def _check_point(boresight_lat: float, boresight_lon: float) -> np.ndarray:
+    if not (np.isfinite(boresight_lat) and np.isfinite(boresight_lon)):
+        raise ValueError("boresight point is not finite")
+    if abs(boresight_lat) > 90:
+        raise ValueError(f"boresight latitude {boresight_lat} is outside -90..90")
+    return unit_vectors(boresight_lat, boresight_lon)[0]
 
 
-def footprint_record(footprint) -> dict:
-    """Parameters for loading one footprint (a rdr_reader.Footprint) into the database.
+def nearest_vertex_distance_km(boresight_lat: float, boresight_lon: float, vertices,
+                               *, radius_km: float = MERCURY_RADIUS_KM) -> float:
+    """Great-circle distance in km from the boresight point to the nearest perimeter vertex."""
+    center = _check_point(boresight_lat, boresight_lon)
+    return float(radius_km * _angles_from(center, _perimeter_vectors(vertices)).min())
 
-    Matching a footprint to its CDR row uses partition + met, and start_time as
-    a cross-check, since MET alone repeats between clock partitions."""
-    polygon = build_footprint_polygon(footprint.vertices)
-    return {
-        "source_file": Path(footprint.path).name.lower(),
-        "partition": footprint.partition,
-        "met": footprint.met,
-        "start_time": footprint.start_time,
-        "stop_time": footprint.stop_time,
-        "stop_met": footprint.stop_met,
-        "wkt": polygon.wkt,
-        "pole": polygon.pole,
-        "crosses_antimeridian": polygon.crosses_antimeridian,
-        "vertex_count": polygon.vertex_count,
-    }
+
+def boresight_inside_perimeter(boresight_lat: float, boresight_lon: float, vertices) -> bool:
+    """True if the boresight point lies inside the footprint's perimeter.
+
+    Looks from the boresight point at the perimeter and adds up the turns between
+    neighbouring vertices: a perimeter that encloses the point turns once around it
+    (a full 360 degrees, either way), one that does not turns back and forth to nothing.
+    Returns False if any vertex is more than 90 degrees from the point (see MAX_VERTEX_ANGLE)."""
+    center = _check_point(boresight_lat, boresight_lon)
+    points = _perimeter_vectors(vertices)
+    if (_angles_from(center, points) > MAX_VERTEX_ANGLE).any():
+        return False
+
+    reference = np.array([0.0, 0.0, 1.0]) if abs(center[2]) < 0.9 else np.array([1.0, 0.0, 0.0])
+    east = np.cross(reference, center)
+    east /= np.linalg.norm(east)
+    north = np.cross(center, east)
+    azimuth = np.arctan2(points @ north, points @ east)
+    steps = np.diff(np.append(azimuth, azimuth[0]))
+    steps = (steps + np.pi) % (2 * np.pi) - np.pi                # each turn the short way round
+    return bool(abs(steps.sum()) > np.pi)
+
+
+def footprint_radius(boresight_lat: float, boresight_lon: float, vertices,
+                     *, radius_km: float = MERCURY_RADIUS_KM) -> FootprintRadius:
+    """The radius to store for an observation, and whether it can be trusted.
+
+    `inside` is False when the boresight point is not inside the perimeter, or sits on it
+    (a radius under a meter): the circle would not lie within the footprint."""
+    nearest = nearest_vertex_distance_km(boresight_lat, boresight_lon, vertices, radius_km=radius_km)
+    inside = boresight_inside_perimeter(boresight_lat, boresight_lon, vertices) and nearest > MIN_RADIUS_KM
+    return FootprintRadius(radius_km=nearest, inside=inside, vertex_count=len(vertices))

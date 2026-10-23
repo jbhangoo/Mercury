@@ -32,19 +32,10 @@ CREATE EXTENSION IF NOT EXISTS postgis;
 -- DATABASE_URL=postgresql+psycopg://mercury_user:Merc33Ury##@localhost:5432/mercury_gis
 
 -- XRS --
--- xrs table for MESSENGER XRS CDR observations (replaces the earlier draft).
--- Assumes psql and the postgis extension.
-
--- Mercury is not Earth: geography/WGS84 casts give wrong distances and areas.
--- Register a spherical Mercury lon/lat CRS (IAU radius 2439.4 km) and use it
--- for every geometry. Any unused SRID <= 998999 works; 910001 is arbitrary.
-INSERT INTO spatial_ref_sys (srid, auth_name, auth_srid, srtext, proj4text)
-VALUES (
-    910001, 'LOCAL', 910001,
-    'GEOGCS["Mercury (sphere)",DATUM["Mercury_sphere",SPHEROID["Mercury_sphere",2439400,0]],PRIMEM["Reference Meridian",0],UNIT["degree",0.0174532925199433]]',
-    '+proj=longlat +a=2439400 +b=2439400 +no_defs'
-)
-ON CONFLICT (srid) DO NOTHING;
+-- xrs table for MESSENGER XRS CDR observations.
+-- Positions are plain latitude/longitude numbers on a sphere (Mercury's radius,
+-- 2439.4 km); the table needs no PostGIS types, and PostGIS geography/WGS84
+-- functions would give wrong distances here because they assume Earth.
 
 BEGIN;
 
@@ -76,15 +67,26 @@ CREATE TABLE xrs (
     -- 2 on planet and dark; 3 partly off planet, lit; 4 partly off planet, dark.
     fov_status   smallint NOT NULL CHECK (fov_status BETWEEN 0 AND 4),
     intersection boolean  NOT NULL,        -- boresight hits the planet
-    data_quality bigint   NOT NULL,        -- 32-bit flag word; 0 = nothing flagged
+    -- 32-bit flag word. Only bit 0 is defined: 1 = the data length in the packet
+    -- did not match the length the instrument reported. Search with
+    -- (data_quality & 1) = 0 rather than data_quality = 0.
+    data_quality bigint   NOT NULL,
 
-    -- center = boresight intercept (from the CDR's Mercury-fixed vector).
-    -- footprint = FOV outline, loaded later from the PDS footprints (or SPICE).
-    -- Split footprints at +/-180 lon; extend ones enclosing a pole to +/-90.
-    center     geometry(Point, 910001),
-    center_lon double precision GENERATED ALWAYS AS (ST_X(center)) STORED,
-    center_lat double precision GENERATED ALWAYS AS (ST_Y(center)) STORED,
-    footprint  geometry(MultiPolygon, 910001),
+    -- Where the instrument was pointing: the boresight's intercept with the
+    -- surface, from the CDR's Mercury-fixed vector. Degrees, east longitude in
+    -- -180..180. NULL (both) when the boresight misses the planet.
+    boresight_lat double precision CHECK (boresight_lat BETWEEN -90 AND 90),
+    boresight_lon double precision CHECK (boresight_lon BETWEEN -180 AND 180),
+    CHECK ((boresight_lat IS NULL) = (boresight_lon IS NULL)),
+
+    -- Radius in km of the circle around the boresight point that lies inside the
+    -- observation's footprint: the distance to the nearest perimeter vertex of
+    -- the PDS RDR footprint. NULL until the footprint is loaded, and when the
+    -- footprint cannot be used (no boresight point, or the point is not inside
+    -- the footprint). Observations without it are not found by spatial searches.
+    footprint_radius_km real CHECK (footprint_radius_km > 0),
+    CHECK (footprint_radius_km IS NULL OR boresight_lat IS NOT NULL),
+
     spacecraft_altitude_km real,           -- SCALT, sub-spacecraft point
 
     -- The instrument's own solar monitor (not a flux in W/m^2).
@@ -114,8 +116,6 @@ CREATE TABLE xrs (
     created_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE INDEX xrs_footprint_gist_idx  ON xrs USING gist (footprint);
-CREATE INDEX xrs_center_gist_idx     ON xrs USING gist (center);
 CREATE INDEX xrs_observed_start_idx  ON xrs (observed_start);
 CREATE INDEX xrs_met_idx             ON xrs (met);
 CREATE INDEX xrs_flare_idx           ON xrs (observed_start) WHERE solar_flare_detected;
@@ -126,9 +126,7 @@ COMMIT;
 -- Assign xrs table ownership to the mercury role
 ALTER TABLE xrs OWNER TO mercury;
 
--- Typical query: flare observations overlapping a user-drawn region.
---   SELECT id, observed_start, center_lon, center_lat
---   FROM xrs
---   WHERE solar_flare_detected
---     AND footprint && ST_SetSRID(ST_GeomFromGeoJSON(:region), 910001)
---     AND ST_Intersects(footprint, ST_SetSRID(ST_GeomFromGeoJSON(:region), 910001));
+-- Searching around a point (see server/app/db/access.py): an observation overlaps a
+-- circle of interest (lon, lat, radius) when the great-circle distance from its
+-- boresight point to the center is at most footprint_radius_km + the circle's
+-- radius. No spatial index is needed: a scan of 350,000 rows takes tens of ms.

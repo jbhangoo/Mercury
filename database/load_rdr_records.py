@@ -1,9 +1,18 @@
 #!/usr/bin/env python3
 """
-Download RDR footprint files for one day and optionally update the xrs table.
+Download RDR footprint files for one day and apply them to the xrs table.
+
+Each footprint belongs to a CDR row that must already be loaded (run load_cdr_records
+for the day first). A footprint is reduced to the radius of the circle around the row's
+boresight point that lies inside it, which is stored with the clock partition; the
+footprint itself is not kept. Footprints that cannot be applied (no CDR row, no boresight
+point, boresight point not inside the footprint) are counted and reported, and the exit
+status is 1 only if a file fails or nothing at all could be applied. A footprint that is
+already applied is skipped unless --force is given.
 
     python -m database.load_rdr_records 2013-04-11
     python -m database.load_rdr_records 2013-04-11 --rerun
+    python -m database.load_rdr_records 2013-04-11 --rerun --force
     python -m database.load_rdr_records 2013-04-11 --dry-run
     python -m database.load_rdr_records 2013-04-11 --download-only
     python -m database.load_rdr_records 2013-04-11 --out "C:\\path\\to\\xrs_pds"
@@ -21,13 +30,26 @@ import re
 import sys
 from datetime import date
 from pathlib import Path
+from statistics import median
 
 HERE = Path(__file__).resolve().parent
 
 if __package__:
     from .pds2db.pds_downloader import download_products
+    from .pds2db.consts import (
+        FOOTPRINT_APPLIED,
+        FOOTPRINT_PROBLEM,
+        FOOTPRINT_UNCHANGED,
+        FOOTPRINT_UPDATED,
+    )
 else:
     from database.pds2db.pds_downloader import download_products
+    from database.pds2db.consts import (
+        FOOTPRINT_APPLIED,
+        FOOTPRINT_PROBLEM,
+        FOOTPRINT_UNCHANGED,
+        FOOTPRINT_UPDATED,
+    )
 
 
 def resolve_dsn() -> str | None:
@@ -98,6 +120,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("day", help="UTC day to load, YYYY-MM-DD")
     ap.add_argument("--out", default="xrs_pds", help="folder holding footprints/YYYY/MM/DD/... (default xrs_pds)")
     ap.add_argument("--rerun", action="store_true", help="update based on files already on disk without downloading")
+    ap.add_argument("--force", action="store_true", help="rewrite footprints that are already applied")
     ap.add_argument("--dry-run", action="store_true", help="list files on disk without downloading anything or updating database")
     ap.add_argument(
         "--download-only",
@@ -151,23 +174,49 @@ def main(argv: list[str] | None = None) -> int:
 
     engine = create_engine(dsn)
     updater = RDRUpdater(engine)
-    total, failures = 0, []
+    results, failures = [], []
     try:
         for path in csv_files:
             try:
-                written = updater.update_from_file(path)
-                total += written
-                print(f"  {path.name}: {written} records upserted")
+                results.append(updater.update_from_file(path, force=args.force))
             except Exception as exc:
                 failures.append((path.name, exc))
                 print(f"  {path.name}: FAILED: {exc}", file=sys.stderr)
     finally:
         engine.dispose()
 
-    print(
-        f"{day}: {total} records upserted "
-        f"from {len(csv_files) - len(failures)}/{len(csv_files)} CSV file(s)"
-    )
+    return report(day, len(csv_files), results, failures)
+
+
+def report(day: date, file_count: int, results: list, failures: list) -> int:
+    """Prints what happened to the day's footprints; returns the exit status."""
+    problems = [r for r in results if r.status & FOOTPRINT_PROBLEM]
+    problem_bits = [
+        1 << bit for bit in range(FOOTPRINT_PROBLEM.bit_length())
+        if FOOTPRINT_PROBLEM & (1 << bit)
+    ]
+    for result in problems[:5]:
+        print(f"  {result.source_file}: not applied: {result.summary}", file=sys.stderr)
+    if len(problems) > 5:
+        print(f"  ... and {len(problems) - 5} more not applied", file=sys.stderr)
+
+    updated = sum(bool(r.status & FOOTPRINT_UPDATED) for r in results)
+    unchanged = sum(bool(r.status & FOOTPRINT_UNCHANGED) for r in results)
+    print(f"{day}: {updated} updated, {unchanged} unchanged (already loaded), "
+          f"{len(problems)} not applied, {len(failures)} failed, of {file_count} footprint file(s)")
+    if problems:
+        print("  not applied: " + ", ".join(
+            f"{sum(bool(r.status & bit) for r in problems)} status 0x{bit:02x}"
+            for bit in problem_bits
+            if any(r.status & bit for r in problems)
+        ))
+    offsets = [abs(r.offset_seconds) for r in results if r.offset_seconds is not None]
+    if offsets:
+        print(f"  CDR start time vs footprint label start: median {median(offsets):.1f} s, "
+              f"largest {max(offsets):.1f} s")
+    if results and not any(r.status & FOOTPRINT_APPLIED for r in results):
+        print(f"{day}: no footprint could be applied; is the CDR file for this day loaded?", file=sys.stderr)
+        return 1
     return 1 if failures else 0
 
 

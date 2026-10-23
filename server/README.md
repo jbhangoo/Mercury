@@ -43,8 +43,20 @@ downloader is an internal part of this command, so the normal workflow always
 downloads selected files before loading them. Use `--out <directory>` to
 choose a different output directory.
 
-The `/api/xrs` endpoint can return spatial results after footprint polygons
-have been loaded into the `xrs.footprint` column.
+The `/api/xrs` endpoint can return spatial results after footprint radii have
+been loaded into `xrs.footprint_radius_km`.
+
+Existing databases created with the former `center`/`footprint` geometry
+columns should be backed up, then migrated from the repository root using an
+administrator connection:
+
+    psql -U postgres -d postgres -f database/DB_Migrate_Boresight.sql
+
+This preserves observation rows, clears spatial values, removes the old
+geometry columns and their indexes, and adds nullable boresight latitude,
+longitude, and footprint-radius columns. Existing rows will not be spatially
+searchable until their boresight coordinates and footprint radii are loaded
+again.
 
 #### Messenger XRS
 
@@ -65,12 +77,13 @@ but a bulk loader should be built for existing data or data from other sources
 ## How Client runs
 
 The client requests imagery tiles through the server and sends clicked
-latitude/longitude coordinates to `/api/xrs`. The endpoint returns the
-observations whose loaded `footprint` covers that point in Mercury's
-project SRID 910001. Records without footprints are not spatially matched.
+latitude/longitude coordinates to `/api/xrs`. The endpoint returns
+observations whose boresight and loaded `footprint_radius_km` cover the
+requested location on Mercury. Records without a boresight or footprint radius
+are not spatially matched.
 The response contains an `observations` array of database-backed CDR fields
 and spectra, plus `has_more`; `limit` defaults to 100 and can be set from 1
-to 500. If no footprints cover a point, the array is empty.
+to 500. If no observation coverage circles include a point, the array is empty.
 
 ## Plan Idea
 
@@ -196,8 +209,10 @@ The database volume is retained; adding `-v` also deletes its data.
 The database layer uses SQLAlchemy Core with the psycopg 3 driver. Copy
 `.env.example` to `.env` and set `DATABASE_URL`.
 
-The XRS `footprint` column should contain polygons in SRID 910001. The GiST
-index allows PostGIS to apply a spatial filter before returning observations.
+XRS surface positions are stored as latitude/longitude values in degrees, and
+`footprint_radius_km` stores the radius of the certain-coverage circle around
+the boresight. Spatial searches use great-circle distances on Mercury rather
+than PostGIS geometry columns.
 
 ## Operational notes
 
