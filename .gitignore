@@ -15,6 +15,7 @@ yarn-error.log*
 
 # Data files are stored in database/xrs_pds and are kept out of git.
 /database/xrs_pds/
+/database/backups/
 
 # Local tooling
 .vscode/
