@@ -4,7 +4,7 @@ Run from root directory with:
 
     python database/bulk_load_cdr_records.py
 
-The daily loader writes products under ``database/xrs_pds``. Add or remove
+The daily loader writes products under ``messenger_archive/xrs``. Add or remove
 dates in ``DAYS`` to change the catch-up range.
 """
 from __future__ import annotations

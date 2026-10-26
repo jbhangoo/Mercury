@@ -12,6 +12,17 @@
         },
 
         {
+            "name": "Debug RDR Parser Tests",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "pytest",
+            "args": ["tests/database/test_rdr_parser.py"],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "purpose": ["debug-test"]
+        },
+
+        {
             "name": "Planet Surface Client",
             "type": "pwa-chrome",
             "request": "launch",

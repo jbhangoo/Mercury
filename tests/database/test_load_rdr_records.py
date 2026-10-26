@@ -4,7 +4,7 @@ from types import SimpleNamespace
 import pytest
 
 from database import load_rdr_records
-from database.pds2db.consts import (
+from database.pds2db.pds_consts import (
     FOOTPRINT_NO_BORESIGHT,
     FOOTPRINT_UNMATCHED,
     FOOTPRINT_UNCHANGED,
@@ -13,8 +13,7 @@ from database.pds2db.consts import (
 
 
 def test_download_only_discovers_files_without_loading(tmp_path, monkeypatch, capsys):
-    database_dir = tmp_path / "database"
-    out = database_dir / "xrs_pds"
+    out = tmp_path / "messenger_archive" / "xrs"
     day_dir = out / "footprints" / "2013" / "04" / "11" / "22"
     day_dir.mkdir(parents=True)
     csv_path = day_dir / "xrs_fp_2_012362249.csv"
@@ -31,7 +30,7 @@ def test_download_only_discovers_files_without_loading(tmp_path, monkeypatch, ca
 
     monkeypatch.setattr(load_rdr_records, "download_day", fake_download_day)
     monkeypatch.setattr(load_rdr_records, "resolve_dsn", fail_if_database_accessed)
-    monkeypatch.setattr(load_rdr_records, "HERE", database_dir)
+    monkeypatch.setattr(load_rdr_records, "XRS_ARCHIVE_DIR", out)
 
     assert load_rdr_records.main(["2013-04-11", "--download-only"]) == 0
 
@@ -39,14 +38,14 @@ def test_download_only_discovers_files_without_loading(tmp_path, monkeypatch, ca
     assert "Found 1 CSV file(s) on disk" in capsys.readouterr().out
 
 
-def test_dry_run_uses_database_local_default(tmp_path, monkeypatch, capsys):
-    database_dir = tmp_path / "database"
-    day_dir = database_dir / "xrs_pds" / "footprints" / "2013" / "04" / "11" / "22"
+def test_dry_run_uses_archive_default(tmp_path, monkeypatch, capsys):
+    archive_dir = tmp_path / "messenger_archive" / "xrs"
+    day_dir = archive_dir / "footprints" / "2013" / "04" / "11" / "22"
     day_dir.mkdir(parents=True)
     csv_path = day_dir / "xrs_fp_2_012362249.csv"
     csv_path.touch()
     csv_path.with_suffix(".xml").touch()
-    monkeypatch.setattr(load_rdr_records, "HERE", database_dir)
+    monkeypatch.setattr(load_rdr_records, "XRS_ARCHIVE_DIR", archive_dir)
 
     assert load_rdr_records.main(["2013-04-11", "--dry-run"]) == 0
 

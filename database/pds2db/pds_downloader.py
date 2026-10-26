@@ -17,6 +17,7 @@ import os
 import sys
 from concurrent.futures import ThreadPoolExecutor
 
+from ..database_consts import XRS_ARCHIVE_DIR
 from .file_downloader import download, list_dir, local_path, make_session
 from .pds4_checksum import verify_file
 
@@ -86,7 +87,7 @@ def extension(url):
 def download_products(
     data_type: str,
     *,
-    out: str | os.PathLike[str] = "xrs_pds",
+    out: str | os.PathLike[str] = XRS_ARCHIVE_DIR,
     start_date: str | None = None,
     end_date: str | None = None,
     workers: int = 4,

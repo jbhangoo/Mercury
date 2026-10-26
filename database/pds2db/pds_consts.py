@@ -1,4 +1,4 @@
-LOADER_VERSION = "cdr-loader-1"
+LOADER_VERSION = "cdr-loader-2"
 MERCURY_RADIUS_KM = 2439.4
 RADIUS_TOLERANCE_KM = 50.0
 
@@ -37,7 +37,12 @@ FOOTPRINT_APPLIED = FOOTPRINT_UPDATED | FOOTPRINT_UNCHANGED
 FOOTPRINT_UNMATCHED = 0x01
 FOOTPRINT_NO_BORESIGHT = 0x02
 FOOTPRINT_BORESIGHT_OUTSIDE = 0x04
-FOOTPRINT_PROBLEM = FOOTPRINT_UNMATCHED | FOOTPRINT_NO_BORESIGHT | FOOTPRINT_BORESIGHT_OUTSIDE
+FOOTPRINT_AMBIGUOUS = 0x08   # no CDR row has the footprint's MET and more than one starts at its start time
+FOOTPRINT_PROBLEM = FOOTPRINT_UNMATCHED | FOOTPRINT_NO_BORESIGHT | FOOTPRINT_BORESIGHT_OUTSIDE | FOOTPRINT_AMBIGUOUS
+
+# Informational flag, combined with an outcome above: no CDR row had the footprint's MET, so the row
+# was found by the footprint's start time instead (see rdr_updater).
+FOOTPRINT_MATCHED_BY_TIME = 0x20
 
 {
     FOOTPRINT_UNMATCHED: "no CDR row with this MET and start time",

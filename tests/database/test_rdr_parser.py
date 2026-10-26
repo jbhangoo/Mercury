@@ -1,235 +1,163 @@
-"""
-Tests for rdr_parser (pure Python) and the PostGIS expression in rdr_consts that
-finishes the geometry (needs TEST_DATABASE_URL, a PostGIS 3.2+ database; those
-tests are skipped without it and create nothing).
-"""
-import os
-import shutil
-from datetime import datetime, timezone
-from pathlib import Path
-from types import SimpleNamespace
+"""Tests for rdr_parser: the radius of the circle around the boresight point that lies inside a footprint."""
+import math
 
 import numpy as np
 import pytest
-from sqlalchemy import create_engine, text
-from sqlalchemy.engine import make_url
 
-from database.pds2db.rdr_consts import FOOTPRINT_GEOMETRY_SQL
+from database.database_consts import XRS_ARCHIVE_DIR
 from database.pds2db.rdr_parser import (
-    DegenerateFootprint, _wrap_delta, build_footprint_polygon, footprint_record, footprint_wkt,
-    normalize_longitude,
+    boresight_inside_perimeter, footprint_radius, nearest_vertex_distance_km, unit_vectors,
 )
-from database.pds2db.rdr_reader import RDRReader, VERTEX_DTYPE
+from database.pds2db.rdr_reader import RDRReader
+from fake_footprint import MERCURY_RADIUS_KM, destination, ring, vertices
 
-DATA = Path(__file__).parent / "data"
-REAL_CSV = DATA / "xrs_fp_2_007184992.csv"          # a complete real footprint (with its label beside it)
-URL = os.environ.get("TEST_DATABASE_URL")
-needs_db = pytest.mark.skipif(not URL, reason="TEST_DATABASE_URL not set")
-
-
-def vertices(pairs):
-    """Structured array from (lat, lon) pairs."""
-    array = np.empty(len(pairs), dtype=VERTEX_DTYPE)
-    array["latitude"], array["longitude"] = zip(*pairs) if pairs else ((), ())
-    return array
+REAL_CSV = (
+    XRS_ARCHIVE_DIR / "footprints" / "2013" / "04" / "02" / "00"
+    / "xrs_fp_2_007184992.csv"
+)
+KM_PER_DEGREE = MERCURY_RADIUS_KM * math.pi / 180
 
 
 def real_vertices():
+    missing = [path for path in (REAL_CSV, REAL_CSV.with_suffix(".xml")) if not path.is_file()]
+    if missing:
+        pytest.skip(f"real footprint archive file(s) are not available: {', '.join(map(str, missing))}")
     return RDRReader().read(REAL_CSV)
 
 
-def cap(lat, step=10, descending=False):
-    """A ring of vertices all at one latitude, all the way round the planet."""
-    lons = range(350, -1, -step) if descending else range(0, 360, step)
-    return vertices([(lat, float(lon)) for lon in lons])
+# --- distances -------------------------------------------------------------------------------------
+
+def test_unit_vectors_are_unit_length_and_accept_longitudes_over_180():
+    points = unit_vectors([0, 90, -45, 30], [0, 0, 190, 350])
+    np.testing.assert_allclose(np.linalg.norm(points, axis=1), 1.0)
+    np.testing.assert_allclose(unit_vectors(30, 190), unit_vectors(30, -170), atol=1e-12)
 
 
-# --- longitude helpers --------------------------------------------------------------------------
-
-def test_normalize_longitude_maps_into_minus_180_to_180():
-    np.testing.assert_allclose(normalize_longitude([0, 90, 179.9, 180, 181.85, 270, 359.9, 360, -190]),
-                               [0, 90, 179.9, -180, -178.15, -90, -0.1, 0, 170])
-
-
-# --- a complete real footprint -----------------------------------------------------------------------
-# xrs_fp_2_007184992: 357 vertices, longitudes 165.68 to 223.22, so it straddles the antimeridian.
-
-def test_real_footprint_is_read_whole_and_closed():
-    footprint = RDRReader().read_footprint(REAL_CSV)
-    assert (footprint.partition, footprint.met, len(footprint.vertices)) == (2, 7184992, 357)
-    assert footprint.vertices[0] == footprint.vertices[-1]                     # the file repeats its first vertex
+def test_nearest_vertex_distance_is_a_great_circle_distance_in_km():
+    perimeter = vertices([(0, 1), (0, 5), (5, 5)])
+    assert nearest_vertex_distance_km(0, 0, perimeter) == pytest.approx(KM_PER_DEGREE, rel=1e-9)
+    assert nearest_vertex_distance_km(0, 0, perimeter, radius_km=1000.0) == pytest.approx(1000 * math.pi / 180, rel=1e-9)
 
 
-def test_real_footprint_perimeter_is_one_continuous_ring():
-    v = real_vertices()
-    step_lat = np.diff(v["latitude"])
-    step_lon = _wrap_delta(np.diff(v["longitude"])) * np.cos(np.radians(v["latitude"][:-1]))
-    assert np.hypot(step_lat, step_lon).max() < 0.5                            # no gaps or jumps (degrees)
+def test_distance_to_a_circle_of_vertices_is_its_radius():
+    assert nearest_vertex_distance_km(30, 40, ring(30, 40, 300)) == pytest.approx(300, abs=0.01)
 
 
-def test_real_footprint_straddles_the_antimeridian_and_is_shifted_into_range():
-    polygon = build_footprint_polygon(real_vertices())
-    assert (polygon.pole, polygon.crosses_antimeridian, polygon.vertex_count) == (0, True, 356)
-    np.testing.assert_array_equal(polygon.ring[0], polygon.ring[-1])
-    np.testing.assert_allclose([polygon.ring[:, 0].min(), polygon.ring[:, 0].max()], [165.68 - 360, 223.22 - 360])
-    np.testing.assert_allclose([polygon.ring[:, 1].min(), polygon.ring[:, 1].max()], [49.31, 76.63])
-    assert polygon.wkt.startswith("POLYGON((-178.150000 76.630000, -176.920000 76.630000,")
+# --- inside, and the radius that is stored ------------------------------------------------------------
+
+def test_boresight_at_the_center_gives_the_ring_radius():
+    result = footprint_radius(30, 40, ring(30, 40, 300))
+    assert result.inside is True and result.radius_km == pytest.approx(300, abs=0.01) and result.vertex_count == 120
 
 
-# --- shapes the real data can take ----------------------------------------------------------------
-
-def test_ring_crossing_zero_360_is_made_continuous():
-    polygon = build_footprint_polygon(vertices([(10, 359), (10, 1), (20, 1), (20, 359)]))
-    assert polygon.ring[:, 0].min() == -1 and polygon.ring[:, 0].max() == 1
-    assert polygon.crosses_antimeridian is False
+def test_off_center_boresight_gets_the_distance_to_the_nearest_vertex():
+    boresight = destination(30, 40, 90, 100)                         # 100 km east of the ring's center
+    result = footprint_radius(*boresight, ring(30, 40, 300, count=720))
+    assert result.inside is True and result.radius_km == pytest.approx(200, abs=0.2)
 
 
-def test_ring_crossing_the_antimeridian_is_flagged():
-    polygon = build_footprint_polygon(vertices([(0, 170), (0, 190), (10, 190), (10, 170)]))
-    assert polygon.crosses_antimeridian is True and polygon.pole == 0
-    assert polygon.ring[:, 0].max() - polygon.ring[:, 0].min() == 20
+def test_boresight_outside_the_perimeter_is_not_inside():
+    boresight = destination(30, 40, 90, 400)                         # 100 km beyond the edge
+    result = footprint_radius(*boresight, ring(30, 40, 300))
+    assert result.inside is False
+    assert not boresight_inside_perimeter(*boresight, ring(30, 40, 300))
 
 
-@pytest.mark.parametrize("lat, descending, pole", [(80, False, 1), (80, True, 1), (-75, False, -1), (-75, True, -1)])
-def test_ring_round_a_pole_is_closed_along_that_pole(lat, descending, pole):
-    polygon = build_footprint_polygon(cap(lat, descending=descending))
-    assert polygon.pole == pole and polygon.crosses_antimeridian is True
-    assert set(polygon.ring[-4:-1, 1]) >= {90.0 * pole}
-    area = abs(0.5 * (np.dot(polygon.ring[:-1, 0], polygon.ring[1:, 1]) - np.dot(polygon.ring[1:, 0], polygon.ring[:-1, 1])))
-    assert area == pytest.approx(360 * (90 - abs(lat)))
+@pytest.mark.parametrize("clockwise", [False, True])
+def test_direction_of_the_perimeter_does_not_matter(clockwise):
+    assert footprint_radius(30, 40, ring(30, 40, 300, clockwise=clockwise)).inside is True
 
 
-def test_closed_ring_and_repeated_vertices_give_the_same_polygon():
-    base = [(0, 10), (0, 20), (10, 20), (10, 10)]
-    reference = footprint_wkt(vertices(base))
-    assert footprint_wkt(vertices(base + [base[0]])) == reference
-    assert footprint_wkt(vertices([base[0]] + base)) == reference
-    assert footprint_wkt(vertices([base[0], base[1], base[1], base[2], base[3]])) == reference
+def test_closing_vertex_that_repeats_the_first_makes_no_difference():
+    perimeter = ring(30, 40, 300)
+    closed = vertices(list(zip(perimeter["latitude"], perimeter["longitude"])) + [(perimeter["latitude"][0], perimeter["longitude"][0])])
+    assert footprint_radius(30, 40, closed) == footprint_radius(30, 40, perimeter).__class__(
+        radius_km=pytest.approx(300, abs=0.01), inside=True, vertex_count=121)
 
 
-@pytest.mark.parametrize("pairs", [
-    [], [(0, 0)], [(0, 0), (1, 1)], [(5, 5)] * 4,
-    [(0, 0), (0, 5), (0, 10)],                      # all on one line: no area
-])
-def test_perimeters_without_area_are_rejected(pairs):
-    with pytest.raises(DegenerateFootprint):
-        build_footprint_polygon(vertices(pairs))
+@pytest.mark.parametrize("lat, lon", [(10, 180), (10, 179.5), (10, -179.5), (0, 0), (-60, 359.9)])
+def test_works_across_the_antimeridian_and_the_zero_360_wrap(lat, lon):
+    result = footprint_radius(lat, lon, ring(lat, lon, 400))
+    assert result.inside is True and result.radius_km == pytest.approx(400, abs=0.01)
 
 
-def test_ring_winding_twice_is_rejected():
-    twice = vertices([(80.0, float(lon)) for lon in range(0, 720, 10)])
-    with pytest.raises(ValueError, match="winds 2 times"):
-        build_footprint_polygon(twice)
+def test_longitude_convention_of_the_boresight_does_not_matter():
+    perimeter = ring(20, 190, 300)                                   # footprint files use east longitude 0..360
+    assert footprint_radius(20, 190, perimeter).radius_km == pytest.approx(footprint_radius(20, -170, perimeter).radius_km)
 
 
-def test_non_finite_coordinates_are_rejected():
+@pytest.mark.parametrize("lat", [90.0, -90.0, 89.5, -89.5])
+def test_footprints_around_a_pole(lat):
+    perimeter = ring(lat, 0, 400, count=180)
+    result = footprint_radius(lat, 0, perimeter)
+    assert result.inside is True and result.radius_km == pytest.approx(400, abs=0.01)
+    off_pole = destination(lat, 0, 90, 100) if abs(lat) == 90 else (lat, 0)
+    assert footprint_radius(*off_pole, perimeter).inside is True
+
+
+def test_perimeter_that_does_not_surround_the_point_is_not_inside_even_when_close():
+    side = vertices([(0, 5), (0, 6), (1, 6), (1, 5)])                # a small box away from the origin
+    assert footprint_radius(0.5, 0, side).inside is False
+
+
+def test_vertex_spike_inside_the_perimeter_shrinks_the_radius():
+    """An anomalous interior vertex (the SIS mentions them at the poles) counts like any other vertex."""
+    points = list(zip(*[ring(30, 40, 300)[name] for name in ("latitude", "longitude")]))
+    spike = destination(30, 40, 10, 50)
+    points.insert(10, spike)                                         # one vertex 50 km from the boresight point
+    result = footprint_radius(30, 40, vertices(points))
+    assert result.inside is True and result.radius_km == pytest.approx(50, abs=0.01)
+
+
+def test_boresight_on_the_perimeter_is_not_usable():
+    perimeter = ring(30, 40, 300)
+    on_vertex = (perimeter["latitude"][3], perimeter["longitude"][3])
+    result = footprint_radius(*on_vertex, perimeter)
+    assert result.radius_km == pytest.approx(0, abs=1e-6) and result.inside is False
+
+
+def test_a_boresight_point_a_quarter_planet_away_is_not_inside():
+    assert footprint_radius(-30, 220, ring(30, 40, 300)).inside is False
+
+
+# --- validation -------------------------------------------------------------------------------------
+
+def test_too_few_vertices_or_bad_numbers_are_rejected():
+    with pytest.raises(ValueError, match="only 2 vertices"):
+        footprint_radius(0, 0, vertices([(0, 1), (1, 1)]))
     with pytest.raises(ValueError, match="non-finite"):
-        build_footprint_polygon(vertices([(0, 0), (0, 5), (5, float("nan"))]))
+        footprint_radius(0, 0, vertices([(0, 1), (1, 1), (1, float("nan"))]))
+    with pytest.raises(ValueError, match="not finite"):
+        footprint_radius(float("nan"), 0, ring(0, 0, 100))
+    with pytest.raises(ValueError, match="outside -90..90"):
+        footprint_radius(91, 0, ring(0, 0, 100))
 
 
-def test_footprint_record_carries_what_the_loader_needs(tmp_path):
-    csv_path = tmp_path / "XRS_FP_2_007184992.csv"
-    angles = np.linspace(0, 2 * np.pi, 357, endpoint=False)               # 357 vertices, as the label says
-    csv_path.write_text("".join(f"{20 + 3 * np.sin(a):7.3f},{100 + 4 * np.cos(a):7.3f}\r\n" for a in angles),
-                        newline="")
-    shutil.copy(DATA / "xrs_fp_2_007184992.xml", tmp_path / "XRS_FP_2_007184992.xml")
-    record = footprint_record(RDRReader().read_footprint(csv_path))
-    assert record["source_file"] == "xrs_fp_2_007184992.csv"
-    assert (record["partition"], record["met"], record["stop_met"]) == (2, 7184992, 7185192)
-    assert record["start_time"] == datetime(2013, 4, 2, 0, 3, 12, tzinfo=timezone.utc)
-    assert record["wkt"].startswith("POLYGON((") and record["pole"] == 0 and record["vertex_count"] == 357
-    assert record["crosses_antimeridian"] is False
+# --- a complete real footprint (xrs_fp_2_007184992) -----------------------------------------------------
+# The boresight for this MET was not available, so the area centroid stands in for it.
+CENTROID = (64.6099, 190.8911)
 
 
-# --- finishing the geometry in PostGIS --------------------------------------------------------------
-
-@pytest.fixture(scope="module")
-def conn():
-    url = make_url(URL)
-    if url.drivername in {"postgres", "postgresql"}:
-        url = url.set(drivername="postgresql+psycopg")
-    engine = create_engine(url)
-    with engine.connect() as connection:
-        yield connection
-    engine.dispose()
+def test_real_footprint_radius_at_its_centroid():
+    result = footprint_radius(*CENTROID, real_vertices())
+    assert result.inside is True and result.vertex_count == 357
+    assert result.radius_km == pytest.approx(302.94, abs=0.05)               # the nearest of the vertices
 
 
-def finish(conn, wkt, *points):
-    """(geometry facts, [does the result contain each (lon, lat) in points])."""
-    contains = "".join(f", ST_Contains(g, ST_SetSRID(ST_MakePoint({lon}, {lat}), 910001))"
-                       for lon, lat in points)
-    row = conn.execute(text(
-        f"WITH f AS (SELECT {FOOTPRINT_GEOMETRY_SQL} AS g) "
-        f"SELECT ST_GeometryType(g), ST_NumGeometries(g), ST_IsValid(g), ST_SRID(g), ST_Area(g), "
-        f"ST_XMin(g), ST_XMax(g), ST_YMin(g), ST_YMax(g), ST_IsEmpty(g){contains} FROM f"), {"wkt": wkt}).one()
-    facts = dict(zip(("type", "parts", "valid", "srid", "area", "xmin", "xmax", "ymin", "ymax", "empty"), row))
-    return facts, list(row[10:])
+def test_real_footprint_gives_the_same_answer_for_either_longitude_convention():
+    assert footprint_radius(CENTROID[0], CENTROID[1] - 360, real_vertices()).radius_km == pytest.approx(302.94, abs=0.05)
 
 
-@needs_db
-def test_real_footprint_is_split_into_two_valid_parts_at_the_antimeridian(conn):
-    polygon = build_footprint_polygon(real_vertices())
-    inside_points = [(-175, 60), (170, 70), (-160, 70), (-140, 72), (-170, 66), (-170, 50)]
-    outside_points = [(175, 60), (-150, 60), (0, 0), (-137, 72)]
-    facts, inside = finish(conn, polygon.wkt, *inside_points, *outside_points)
-    assert (facts["type"], facts["parts"], facts["valid"], facts["srid"]) == ("ST_MultiPolygon", 2, True, 910001)
-    assert (facts["xmin"], facts["xmax"]) == (-180.0, 180.0)
-    assert (facts["ymin"], facts["ymax"]) == (49.31, 76.63)
-    assert facts["area"] == pytest.approx(871.226, abs=0.01)                    # same area as the uncut ring
-    assert inside == [True] * len(inside_points) + [False] * len(outside_points)
+@pytest.mark.parametrize("point, inside", [
+    ((56.0, 192.0), True), ((50.0, -170.0), True),                           # near the southern edge
+    ((30.0, 10.0), False), ((80.0, 190.0), False), ((64.6, 150.0), False),
+])
+def test_real_footprint_inside_and_outside_points(point, inside):
+    assert footprint_radius(*point, real_vertices()).inside is inside
 
 
-@needs_db
-def test_real_footprint_is_found_by_regions_on_either_side_of_the_antimeridian(conn):
-    polygon = build_footprint_polygon(real_vertices())
-    query = text(f"WITH f AS (SELECT {FOOTPRINT_GEOMETRY_SQL} AS g) SELECT "
-                 "ST_Intersects(g, ST_MakeEnvelope(175, 65, 176, 66.5, 910001)), "
-                 "ST_Intersects(g, ST_MakeEnvelope(-170, 65, -169, 66, 910001)), "
-                 "ST_Intersects(g, ST_MakeEnvelope(0, 0, 1, 1, 910001)) FROM f")
-    assert tuple(conn.execute(query, {"wkt": polygon.wkt}).one()) == (True, True, False)
-
-
-@needs_db
-def test_footprint_across_the_antimeridian_is_split_into_two_valid_parts(conn):
-    polygon = build_footprint_polygon(vertices([(0, 170), (0, 190), (10, 190), (10, 170)]))
-    facts, inside = finish(conn, polygon.wkt, (175, 5), (-175, 5), (0, 5))
-    assert (facts["parts"], facts["valid"]) == (2, True)
-    assert (facts["xmin"], facts["xmax"]) == (-180.0, 180.0)
-    assert facts["area"] == pytest.approx(200.0)                    # nothing lost or duplicated in the cut
-    assert inside == [True, True, False]
-
-
-@needs_db
-@pytest.mark.parametrize("lat, descending, pole", [(80, False, 90), (-75, True, -90)])
-def test_polar_cap_covers_the_pole_and_the_whole_circle(conn, lat, descending, pole):
-    polygon = build_footprint_polygon(cap(lat, descending=descending))
-    sign = 1 if pole > 0 else -1
-    facts, inside = finish(conn, polygon.wkt, (0, pole - sign * 0.1), (179, pole - sign * 5),
-                           (-179, pole - sign * 5), (0, lat - sign * 10))
-    assert facts["valid"] and not facts["empty"]
-    assert (facts["xmin"], facts["xmax"]) == (-180.0, 180.0)
-    assert facts["area"] == pytest.approx(360 * (90 - abs(lat)))
-    assert inside == [True, True, True, False]
-    assert facts["ymax" if pole > 0 else "ymin"] == pole
-
-
-@needs_db
-def test_self_intersecting_ring_is_repaired_not_rejected(conn):
-    facts, _ = finish(conn, "POLYGON((0 0, 10 10, 10 0, 0 10, 0 0))")      # a bow tie
-    assert facts["valid"] and not facts["empty"] and facts["area"] == pytest.approx(50.0)
-
-
-@needs_db
-def test_polygon_without_area_gives_an_empty_geometry_for_the_loader_to_reject(conn):
-    facts, _ = finish(conn, "POLYGON((0 0, 5 0, 10 0, 0 0))")
-    assert facts["empty"] is True
-
-
-@needs_db
-def test_region_queries_find_a_footprint_from_either_side_of_the_antimeridian(conn):
-    polygon = build_footprint_polygon(vertices([(0, 170), (0, 190), (10, 190), (10, 170)]))
-    query = text(f"WITH f AS (SELECT {FOOTPRINT_GEOMETRY_SQL} AS g) SELECT "
-                 "ST_Intersects(g, ST_MakeEnvelope(178, 2, 179, 4, 910001)), "
-                 "ST_Intersects(g, ST_MakeEnvelope(-179, 2, -178, 4, 910001)), "
-                 "ST_Intersects(g, ST_MakeEnvelope(0, 2, 1, 4, 910001)) FROM f")
-    assert tuple(conn.execute(query, {"wkt": polygon.wkt}).one()) == (True, True, False)
+def test_real_footprint_radius_grows_toward_the_middle_and_shrinks_toward_the_edge():
+    perimeter = real_vertices()
+    middle = footprint_radius(*CENTROID, perimeter).radius_km
+    near_edge = footprint_radius(50.0, -170.0, perimeter).radius_km
+    assert near_edge < 20 < 250 < middle

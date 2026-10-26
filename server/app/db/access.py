@@ -48,6 +48,10 @@ VALID_FOR_SEARCH = and_(
     xrs.c.data_quality.op("&")(1) == 0,
 )
 
+# When no CDR row has the footprint's MET, rows are matched on start time alone: the nearest start
+# within this tolerance (footprint labels give whole seconds, CDR times have milliseconds).
+FOOTPRINT_TIME_TOLERANCE = timedelta(seconds=2)
+
 # How far (in time) a CDR row's start may be from a footprint label's start and still
 # match it; MET alone repeats between spacecraft clock partitions, which are years apart.
 FOOTPRINT_MATCH_WINDOW = timedelta(hours=1)
@@ -90,12 +94,40 @@ ON CONFLICT (source_file, source_id) DO UPDATE SET
 # unless the boresight point changed: the radius was measured from it, so it is cleared.
 
 XRS_FOOTPRINT_LOOKUP_SQL = text("""
-SELECT id, observed_start, boresight_lat, boresight_lon, footprint_radius_km, sclk_partition
+SELECT id, met, observed_start, boresight_lat, boresight_lon, footprint_radius_km, sclk_partition
 FROM xrs
 WHERE met = :met
   AND observed_start BETWEEN :window_start AND :window_end
 ORDER BY abs(extract(epoch FROM observed_start - :start_time)), id
 LIMIT 1
+""")
+
+XRS_FOOTPRINT_BY_TIME_SQL = text("""
+SELECT id, met, observed_start, boresight_lat, boresight_lon, footprint_radius_km, sclk_partition
+FROM xrs
+WHERE observed_start BETWEEN :window_start AND :window_end
+ORDER BY abs(extract(epoch FROM observed_start - :start_time)), id
+LIMIT 2
+""")
+
+# The SIS produces a footprint for every CDR observation whose FOV_STATUS is 1 (on the planet, lit) or
+# 3 (partly on the planet, lit); the other statuses have none.
+XRS_ROWS_EXPECTING_FOOTPRINTS_SQL = text("""
+SELECT id, met, observed_start
+FROM xrs
+WHERE observed_start >= :day_start AND observed_start < :day_end AND fov_status IN (1, 3)
+ORDER BY observed_start, id
+""")
+
+# When a footprint finds no CDR row, the nearest rows by time say why (wrong MET? day not loaded?).
+NEAREST_TIME_WINDOW = timedelta(days=1)
+
+XRS_NEAREST_BY_TIME_SQL = text("""
+SELECT met, observed_start
+FROM xrs
+WHERE observed_start BETWEEN :window_start AND :window_end
+ORDER BY abs(extract(epoch FROM observed_start - :when)), id
+LIMIT :count
 """)
 
 XRS_FOOTPRINT_UPDATE_SQL = text("""
@@ -118,6 +150,35 @@ def db_xrs_find_for_footprint(connection: Connection, met: int, start_time: date
         "window_start": start_time - FOOTPRINT_MATCH_WINDOW,
         "window_end": start_time + FOOTPRINT_MATCH_WINDOW,
     }).mappings().first()
+
+
+def db_xrs_find_for_footprint_by_time(
+    connection: Connection, start_time: datetime, tolerance: timedelta = FOOTPRINT_TIME_TOLERANCE
+) -> list[RowMapping]:
+    """CDR rows (nearest first, at most two) that start within `tolerance` of a footprint's start time.
+    Two rows means the start time alone cannot tell which observation the footprint belongs to."""
+    return list(connection.execute(XRS_FOOTPRINT_BY_TIME_SQL, {
+        "start_time": start_time,
+        "window_start": start_time - tolerance,
+        "window_end": start_time + tolerance,
+    }).mappings())
+
+
+def db_xrs_rows_expecting_footprints(connection: Connection, day_start: datetime, day_end: datetime) -> list[RowMapping]:
+    """CDR rows starting in [day_start, day_end) whose FOV status means a footprint file should exist."""
+    return list(connection.execute(XRS_ROWS_EXPECTING_FOOTPRINTS_SQL,
+                                   {"day_start": day_start, "day_end": day_end}).mappings())
+
+
+def db_xrs_nearest_by_time(connection: Connection, when: datetime, count: int = 3) -> list[RowMapping]:
+    """The `count` CDR rows (met, observed_start) closest in time to `when`, within a day of it.
+    Empty if the table has nothing within a day: usually the day's CDR file is not loaded."""
+    return list(connection.execute(XRS_NEAREST_BY_TIME_SQL, {
+        "when": when,
+        "window_start": when - NEAREST_TIME_WINDOW,
+        "window_end": when + NEAREST_TIME_WINDOW,
+        "count": count,
+    }).mappings())
 
 
 def db_xrs_set_footprint(connection: Connection, row_id: int, partition: int, radius_km: float) -> None:

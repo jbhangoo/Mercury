@@ -27,24 +27,28 @@ import logging
 import os
 import re
 import sys
-from datetime import date
+from datetime import date, datetime, time, timedelta, timezone
 from pathlib import Path
 from statistics import median
 
 HERE = Path(__file__).resolve().parent
 
 if __package__:
+    from .database_consts import XRS_ARCHIVE_DIR
     from .pds2db.pds_downloader import download_products
-    from .pds2db.consts import (
+    from .pds2db.pds_consts import (
         FOOTPRINT_APPLIED,
+        FOOTPRINT_MATCHED_BY_TIME,
         FOOTPRINT_PROBLEM,
         FOOTPRINT_UNCHANGED,
         FOOTPRINT_UPDATED,
     )
 else:
+    from database.database_consts import XRS_ARCHIVE_DIR
     from database.pds2db.pds_downloader import download_products
-    from database.pds2db.consts import (
+    from database.pds2db.pds_consts import (
         FOOTPRINT_APPLIED,
+        FOOTPRINT_MATCHED_BY_TIME,
         FOOTPRINT_PROBLEM,
         FOOTPRINT_UNCHANGED,
         FOOTPRINT_UPDATED,
@@ -119,6 +123,11 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("day", help="UTC day to load, YYYY-MM-DD")
     ap.add_argument("--rerun", action="store_true", help="update based on files already on disk without downloading")
     ap.add_argument("--force", action="store_true", help="rewrite footprints that are already applied")
+    ap.add_argument(
+        "--match-by-time",
+        action="store_true",
+        help="when no CDR row has a footprint's MET, match the row that starts at the footprint's start time",
+    )
     ap.add_argument("--dry-run", action="store_true", help="list files on disk without downloading anything or updating database")
     ap.add_argument(
         "--download-only",
@@ -136,7 +145,7 @@ def main(argv: list[str] | None = None) -> int:
     except ValueError:
         ap.error(f"day must be YYYY-MM-DD, got {args.day!r}")
         
-    out = HERE / "xrs_pds"
+    out = XRS_ARCHIVE_DIR
 
     if not args.rerun and not args.dry_run and download_day(out, day) != 0:
         print(f"{day}: failed (nothing downloaded and no records updated).", file=sys.stderr)
@@ -170,7 +179,7 @@ def main(argv: list[str] | None = None) -> int:
         from pds2db.rdr_updater import RDRUpdater
 
     engine = create_engine(dsn)
-    updater = RDRUpdater(engine)
+    updater = RDRUpdater(engine, match_by_time=args.match_by_time)
     results, failures = [], []
     try:
         for path in csv_files:
@@ -179,10 +188,37 @@ def main(argv: list[str] | None = None) -> int:
             except Exception as exc:
                 failures.append((path.name, exc))
                 print(f"  {path.name}: FAILED: {exc}", file=sys.stderr)
+        expected, missing = missing_footprints(engine, day, results)
     finally:
         engine.dispose()
 
-    return report(day, len(csv_files), results, failures)
+    status = report(day, len(csv_files), results, failures)
+    report_missing(day, expected, missing)
+    return status
+
+
+def missing_footprints(engine, day: date, results: list):
+    """(rows that should have a footprint, those no footprint file reached) for a UTC day.
+
+    A CDR row should have one when its FOV status is 1 or 3 (the SIS); other rows have none. A row
+    counts as reached if any footprint file was matched to it, even one that could not be applied
+    (that shows up in the report as not applied). Rows within seconds of midnight can have their
+    footprint filed under the neighboring day, so a miss at either end of the day may not be real."""
+    from server.app.db.access import db_xrs_rows_expecting_footprints
+    start = datetime.combine(day, time(0), tzinfo=timezone.utc)
+    with engine.connect() as connection:
+        expected = db_xrs_rows_expecting_footprints(connection, start, start + timedelta(days=1))
+    reached = {r.row_id for r in results if getattr(r, "row_id", None) is not None}
+    return expected, [row for row in expected if row["id"] not in reached]
+
+
+def report_missing(day: date, expected: list, missing: list) -> None:
+    if not missing:
+        print(f"{day}: all {len(expected)} CDR row(s) with FOV status 1 or 3 were reached by a footprint file")
+        return
+    shown = ", ".join(f"MET {row['met']}" for row in missing[:5]) + (f" and {len(missing) - 5} more" if len(missing) > 5 else "")
+    print(f"{day}: {len(missing)} of {len(expected)} CDR row(s) with FOV status 1 or 3 have no footprint file "
+          f"({shown})", file=sys.stderr)
 
 
 def report(day: date, file_count: int, results: list, failures: list) -> int:
@@ -207,6 +243,13 @@ def report(day: date, file_count: int, results: list, failures: list) -> int:
             for bit in problem_bits
             if any(r.status & bit for r in problems)
         ))
+    by_time = [r for r in results if r.status & FOOTPRINT_MATCHED_BY_TIME]
+    if by_time:
+        met_offsets = sorted({r.met_offset for r in by_time})
+        relation = (f"always {met_offsets[0]:+d}" if len(met_offsets) == 1 else
+                    f"{len(met_offsets)} different values, from {met_offsets[0]:+d} to {met_offsets[-1]:+d}")
+        print(f"  {len(by_time)} matched by start time because no CDR row had the footprint's MET; "
+              f"CDR MET minus footprint MET: {relation}")
     offsets = [abs(r.offset_seconds) for r in results if r.offset_seconds is not None]
     if offsets:
         print(f"  CDR start time vs footprint label start: median {median(offsets):.1f} s, "

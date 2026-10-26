@@ -12,7 +12,7 @@ from sqlalchemy.engine import Engine
 
 from server.app.db.access import db_xrs_insert
 
-from .consts import (
+from .pds_consts import (
     LOADER_VERSION,
     OPTIONAL_COLUMNS,
     OWN_COLUMNS,
@@ -22,7 +22,7 @@ from .consts import (
 from .cdr_reader import CDRReader
 from .cdr_parser import (
     build_json_column,
-    calculate_center_lonlat,
+    calculate_boresight_lonlat,
     clean_value,
     parse_truthy,
     parse_utc,
@@ -44,7 +44,7 @@ def _build_records(rows: np.ndarray, source_file: str, keep_housekeeping: bool):
 
     start = parse_utc(rows["utc"])
     seconds = rows["actual_integration_time"].tolist()
-    lon, lat = calculate_center_lonlat(rows)
+    lon, lat = calculate_boresight_lonlat(rows)
     intersection = parse_truthy(rows["intersection"]).tolist()
     flare = parse_truthy(rows["solar_flare_detected"]).tolist()
     
@@ -73,8 +73,8 @@ def _build_records(rows: np.ndarray, source_file: str, keep_housekeeping: bool):
             "fov_status": columns["fov_status"][i],
             "intersection": intersection[i],
             "data_quality": columns["data_quality"][i],
-            "lon": lon[i],
-            "lat": lat[i],
+            "boresight_lon": lon[i],
+            "boresight_lat": lat[i],
             "scalt": optional["scalt"][i],
             "solar_flare_detected": flare[i],
             "solar_monitor_rate": optional["solar_monitor_rate"][i],

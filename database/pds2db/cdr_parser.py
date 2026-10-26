@@ -1,7 +1,7 @@
 import math
 from datetime import datetime, timezone
 import numpy as np
-from .consts import MERCURY_RADIUS_KM, RADIUS_TOLERANCE_KM
+from .pds_consts import MERCURY_RADIUS_KM, RADIUS_TOLERANCE_KM
 
 def parse_truthy(column: np.ndarray) -> np.ndarray:
     if column.dtype.kind in "biu":
@@ -29,7 +29,7 @@ def parse_utc(column: np.ndarray) -> list[datetime]:
             raise ValueError(f"unparseable UTC value {text_val!r}")
     return out
 
-def calculate_center_lonlat(rows: np.ndarray):
+def calculate_boresight_lonlat(rows: np.ndarray):
     x, y, z = (rows[f"instr_boresight_mercury_{axis}"].astype(np.float64) for axis in "xyz")
     radius = np.sqrt(x * x + y * y + z * z)
     with np.errstate(invalid="ignore", divide="ignore"):

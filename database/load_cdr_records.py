@@ -6,7 +6,7 @@ Load every CDR record file for one day into the xrs table.
     python -m database.load_cdr_records 2013-04-11 --rerun
     python -m database.load_cdr_records 2013-04-11 --dry-run
 
-The day's files are expected at database/xrs_pds/data/YYYY/MM/DD/xrscdr*.dat, each with its
+The day's files are expected at messenger_archive/xrs/data/YYYY/MM/DD/xrscdr*.dat, each with its
 .xml label beside it. By default, the day's files are downloaded from PDS first.
 Use --rerun to insert data from files already on disk without downloading. Each file is
 loaded in its own transaction, so a bad file is reported and skipped without
@@ -31,8 +31,10 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 
 if __package__:
+    from .database_consts import XRS_ARCHIVE_DIR
     from .pds2db.pds_downloader import download_products
 else:
+    from database.database_consts import XRS_ARCHIVE_DIR
     from database.pds2db.pds_downloader import download_products
 
 
@@ -75,7 +77,7 @@ def main(argv: list[str] | None = None) -> int:
         day = date.fromisoformat(args.day)
     except ValueError:
         ap.error(f"day must be YYYY-MM-DD, got {args.day!r}")
-    out = HERE / "xrs_pds"
+    out = XRS_ARCHIVE_DIR
 
     if not args.rerun and not args.dry_run and download_day(out, day) != 0:
         print(f"{day}: failed (nothing downloaded or inserted).", file=sys.stderr)

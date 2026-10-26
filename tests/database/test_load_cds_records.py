@@ -24,9 +24,9 @@ def _prepare_day_files(out):
 
 
 def test_main_reports_rows_as_upserted(tmp_path, monkeypatch, capsys):
-    database_dir = tmp_path / "database"
-    _prepare_day_files(database_dir / "xrs_pds")
-    monkeypatch.setattr(load_cdr_records, "HERE", database_dir)
+    archive_dir = tmp_path / "messenger_archive" / "xrs"
+    _prepare_day_files(archive_dir)
+    monkeypatch.setattr(load_cdr_records, "XRS_ARCHIVE_DIR", archive_dir)
     monkeypatch.setattr(load_cdr_records, "resolve_dsn", lambda: "postgresql+psycopg://test")
     monkeypatch.setattr("sqlalchemy.create_engine", lambda dsn: FakeEngine())
     monkeypatch.setattr("database.pds2db.cdr_loader.CDRLoader", SuccessfulLoader)
@@ -39,9 +39,9 @@ def test_main_reports_rows_as_upserted(tmp_path, monkeypatch, capsys):
 
 
 def test_main_reports_database_insertion_failure(tmp_path, monkeypatch, capsys):
-    database_dir = tmp_path / "database"
-    _prepare_day_files(database_dir / "xrs_pds")
-    monkeypatch.setattr(load_cdr_records, "HERE", database_dir)
+    archive_dir = tmp_path / "messenger_archive" / "xrs"
+    _prepare_day_files(archive_dir)
+    monkeypatch.setattr(load_cdr_records, "XRS_ARCHIVE_DIR", archive_dir)
     monkeypatch.setattr(load_cdr_records, "resolve_dsn", lambda: "postgresql+psycopg://test")
     monkeypatch.setattr("sqlalchemy.create_engine", lambda dsn: FakeEngine())
 

@@ -26,7 +26,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from .consts import MERCURY_RADIUS_KM
+from .pds_consts import MERCURY_RADIUS_KM
 
 # A "nearest vertex" closer than this means the boresight point sits on the perimeter.
 MIN_RADIUS_KM = 1e-3
