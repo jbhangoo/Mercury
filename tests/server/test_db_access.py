@@ -11,8 +11,9 @@ from sqlalchemy.dialects import postgresql
 
 from app.db import access
 from app.db.access import (
-    FOOTPRINT_MATCH_WINDOW, MERCURY_RADIUS_KM, WEIGHT_SIGMA_FRACTION, db_xrs_find_for_footprint,
-    db_xrs_nearest_by_time, db_xrs_set_footprint, find_xrs_observations_near, near_observations_statement,
+    FOOTPRINT_TIME_TOLERANCE, MERCURY_RADIUS_KM, WEIGHT_SIGMA_FRACTION,
+    db_xrs_find_for_footprint_by_time, db_xrs_nearest_by_time, db_xrs_set_footprint,
+    find_xrs_observations_near, near_observations_statement,
 )
 
 KM_PER_DEGREE = MERCURY_RADIUS_KM * math.pi / 180
@@ -160,37 +161,30 @@ def connection_of(engine):
         yield connection
 
 
-def test_footprint_lookup_matches_met_and_start_time(xrs_engine, insert_xrs):
-    wanted = insert_xrs(met=7184992, observed_start=START, observed_end=START + timedelta(seconds=200))
-    insert_xrs(met=7184993, observed_start=START)                                    # other MET
+def test_footprint_candidates_are_ordered_by_nearest_start_time(xrs_engine, insert_xrs):
+    near = insert_xrs(met=7184993, observed_start=START + timedelta(milliseconds=250))
+    farther = insert_xrs(met=7184992, observed_start=START - timedelta(seconds=1))
+    insert_xrs(met=7184994, observed_start=START + timedelta(seconds=3))
     with connection_of(xrs_engine) as connection:
-        row = db_xrs_find_for_footprint(connection, 7184992, START)
-        assert row["id"] == wanted
-        assert db_xrs_find_for_footprint(connection, 7184994, START) is None
+        rows = db_xrs_find_for_footprint_by_time(connection, START)
+        assert [row["id"] for row in rows] == [near, farther]
 
 
-def test_footprint_lookup_separates_rows_with_the_same_met_in_different_clock_partitions(xrs_engine, insert_xrs):
-    early = insert_xrs(met=7184992, observed_start=datetime(2011, 5, 20, tzinfo=timezone.utc))
-    late = insert_xrs(met=7184992, observed_start=START)
+def test_footprint_candidates_use_the_two_second_tolerance(xrs_engine, insert_xrs):
+    inside = insert_xrs(met=7184992, observed_start=START + FOOTPRINT_TIME_TOLERANCE)
+    insert_xrs(
+        met=7184993,
+        observed_start=START + FOOTPRINT_TIME_TOLERANCE + timedelta(microseconds=1),
+    )
     with connection_of(xrs_engine) as connection:
-        assert db_xrs_find_for_footprint(connection, 7184992, START)["id"] == late
-        assert db_xrs_find_for_footprint(connection, 7184992, datetime(2011, 5, 20, 0, 0, 1, tzinfo=timezone.utc))["id"] == early
-
-
-def test_footprint_lookup_tolerates_small_start_time_differences_but_not_large_ones(xrs_engine, insert_xrs):
-    row_id = insert_xrs(met=7184992, observed_start=START + timedelta(seconds=40))   # e.g. the CDR time is the midpoint
-    inside = START + FOOTPRINT_MATCH_WINDOW - timedelta(seconds=41)
-    with connection_of(xrs_engine) as connection:
-        assert db_xrs_find_for_footprint(connection, 7184992, START)["id"] == row_id
-        assert db_xrs_find_for_footprint(connection, 7184992, inside)["id"] == row_id
-        assert db_xrs_find_for_footprint(connection, 7184992, START + timedelta(hours=2)) is None
+        assert [row["id"] for row in db_xrs_find_for_footprint_by_time(connection, START)] == [inside]
 
 
 def test_setting_a_footprint_stores_radius_and_partition(xrs_engine, insert_xrs):
     row_id = insert_xrs(met=7184992, observed_start=START, boresight_lat=64.6, boresight_lon=-169.1)
     with connection_of(xrs_engine) as connection:
         db_xrs_set_footprint(connection, row_id, 2, 302.94)
-        row = db_xrs_find_for_footprint(connection, 7184992, START)
+        row = db_xrs_find_for_footprint_by_time(connection, START)[0]
     assert row["sclk_partition"] == 2 and row["footprint_radius_km"] == pytest.approx(302.94, rel=1e-6)
 
 

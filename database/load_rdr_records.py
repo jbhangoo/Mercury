@@ -19,6 +19,10 @@ already applied is skipped unless --force is given.
 Use --download-only to download the day's products and verify that footprint CSVs
 and their XML labels are discoverable, without parsing records or connecting to
 the database. --dry-run only checks files already on disk and does not download.
+
+Footprints are matched to CDR rows by a unique start time within two seconds.
+If multiple rows are in that window, an exact MET match disambiguates them;
+otherwise the footprint is reported as ambiguous.
 """
 from __future__ import annotations
 
@@ -123,11 +127,6 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("day", help="UTC day to load, YYYY-MM-DD")
     ap.add_argument("--rerun", action="store_true", help="update based on files already on disk without downloading")
     ap.add_argument("--force", action="store_true", help="rewrite footprints that are already applied")
-    ap.add_argument(
-        "--match-by-time",
-        action="store_true",
-        help="when no CDR row has a footprint's MET, match the row that starts at the footprint's start time",
-    )
     ap.add_argument("--dry-run", action="store_true", help="list files on disk without downloading anything or updating database")
     ap.add_argument(
         "--download-only",
@@ -179,7 +178,7 @@ def main(argv: list[str] | None = None) -> int:
         from pds2db.rdr_updater import RDRUpdater
 
     engine = create_engine(dsn)
-    updater = RDRUpdater(engine, match_by_time=args.match_by_time)
+    updater = RDRUpdater(engine)
     results, failures = [], []
     try:
         for path in csv_files:
@@ -248,7 +247,7 @@ def report(day: date, file_count: int, results: list, failures: list) -> int:
         met_offsets = sorted({r.met_offset for r in by_time})
         relation = (f"always {met_offsets[0]:+d}" if len(met_offsets) == 1 else
                     f"{len(met_offsets)} different values, from {met_offsets[0]:+d} to {met_offsets[-1]:+d}")
-        print(f"  {len(by_time)} matched by start time because no CDR row had the footprint's MET; "
+        print(f"  {len(by_time)} matched by start time because the CDR row had a different MET; "
               f"CDR MET minus footprint MET: {relation}")
     offsets = [abs(r.offset_seconds) for r in results if r.offset_seconds is not None]
     if offsets:

@@ -2,14 +2,15 @@
 Database update orchestrator for loading XRS RDR footprints into existing xrs rows.
 
 A footprint file does not create observations. It belongs to a CDR row that must already
-be loaded, found by the footprint's MET (with its start time as a cross-check). The
-footprint is reduced to one number, the radius of the circle around the row's boresight
+be loaded. Rows whose start time is within two seconds of the footprint label are candidates;
+an exact MET match disambiguates multiple candidates. The footprint is reduced to one number,
+the radius of the circle around the row's boresight
 point that lies inside the footprint (see rdr_parser), and that radius and the footprint's
 spacecraft clock partition are written to the row.
 
 Footprints that cannot be applied are reported rather than failing the run:
 
-    unmatched          no CDR row has this MET at this time (load that day's CDR file first)
+    unmatched          no CDR row starts within two seconds of the footprint label's time
     no_boresight       the row's boresight misses the planet, so there is no point to measure from
     boresight_outside  the boresight point is not inside the footprint's perimeter
 
@@ -25,7 +26,7 @@ from pathlib import Path
 from sqlalchemy.engine import Engine
 
 from server.app.db.access import (
-    db_xrs_find_for_footprint, db_xrs_find_for_footprint_by_time, db_xrs_nearest_by_time, db_xrs_set_footprint,
+    db_xrs_find_for_footprint_by_time, db_xrs_nearest_by_time, db_xrs_set_footprint,
 )
 
 from .pds_consts import FOOTPRINT_APPLIED, FOOTPRINT_UPDATED
@@ -65,7 +66,7 @@ class FootprintUpdate:
         if self.status & FOOTPRINT_UNCHANGED:
             return f"already loaded (radius {self.radius_km:.1f} km), skipped{by_time}"
         if self.status & FOOTPRINT_AMBIGUOUS:
-            return f"more than one CDR row starts at this time and none has this MET: {self.note}"
+            return f"more than one CDR row starts within two seconds and no unique MET match resolves them: {self.note}"
         if self.status & FOOTPRINT_UNMATCHED:
             text = "no CDR data for this MET and start time"
             return f"{text}: {self.note}" if self.note else text
@@ -89,17 +90,10 @@ def describe_nearby(footprint, nearby) -> str:
 class RDRUpdater:
     """Applies XRS RDR footprint files to xrs rows using SQLAlchemy."""
 
-    def __init__(self, engine: Engine, *, reader: RDRReader | None = None, match_by_time: bool = False):
-        """The SIS names the spacecraft clock count (MET) as the key that ties a footprint to its CDR row,
-        with the UTC date only as a first filter, so a footprint matches the row with its MET.
-
-        match_by_time: when no CDR row has the footprint's MET, fall back to the one row that starts at the
-        footprint's start time (see FOOTPRINT_TIME_TOLERANCE). Use it only after checking, with the
-        unmatched-footprint report, that the two clocks really differ. The result is flagged, and report()
-        in load_rdr_records shows how the two MET values relate."""
+    def __init__(self, engine: Engine, *, reader: RDRReader | None = None):
+        """Create an updater that matches footprints to rows by start time and MET."""
         self.engine = engine
         self.reader = reader or RDRReader()
-        self.match_by_time = match_by_time
 
     def update_from_file(
         self,
@@ -119,15 +113,24 @@ class RDRUpdater:
         name = csv_path.name.lower()
 
         with self.engine.begin() as connection:
-            row = db_xrs_find_for_footprint(connection, footprint.met, footprint.start_time)
+            candidates = db_xrs_find_for_footprint_by_time(connection, footprint.start_time)
+            met_matches = [candidate for candidate in candidates if candidate["met"] == footprint.met]
             flags = 0
-            if row is None and self.match_by_time:
-                candidates = db_xrs_find_for_footprint_by_time(connection, footprint.start_time)
-                if len(candidates) > 1:
-                    near = ", ".join(f"MET {c['met']}" for c in candidates)
-                    return FootprintUpdate(name, FOOTPRINT_AMBIGUOUS, note=f"{near} (footprint MET {footprint.met})")
-                if candidates:
-                    row, flags = candidates[0], FOOTPRINT_MATCHED_BY_TIME
+            if len(met_matches) == 1:
+                row = met_matches[0]
+            elif len(met_matches) > 1 or len(candidates) > 1:
+                near = ", ".join(f"MET {candidate['met']}" for candidate in candidates)
+                return FootprintUpdate(
+                    name,
+                    FOOTPRINT_AMBIGUOUS,
+                    note=f"{near} (footprint MET {footprint.met})",
+                )
+            elif candidates:
+                row = candidates[0]
+                if row["met"] != footprint.met:
+                    flags = FOOTPRINT_MATCHED_BY_TIME
+            else:
+                row = None
             if row is None:
                 nearby = db_xrs_nearest_by_time(connection, footprint.start_time)
                 return FootprintUpdate(name, FOOTPRINT_UNMATCHED, note=describe_nearby(footprint, nearby))

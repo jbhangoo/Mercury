@@ -37,11 +37,11 @@ FOOTPRINT_APPLIED = FOOTPRINT_UPDATED | FOOTPRINT_UNCHANGED
 FOOTPRINT_UNMATCHED = 0x01
 FOOTPRINT_NO_BORESIGHT = 0x02
 FOOTPRINT_BORESIGHT_OUTSIDE = 0x04
-FOOTPRINT_AMBIGUOUS = 0x08   # no CDR row has the footprint's MET and more than one starts at its start time
+FOOTPRINT_AMBIGUOUS = 0x08   # multiple nearby CDR rows with no unique exact-MET match
 FOOTPRINT_PROBLEM = FOOTPRINT_UNMATCHED | FOOTPRINT_NO_BORESIGHT | FOOTPRINT_BORESIGHT_OUTSIDE | FOOTPRINT_AMBIGUOUS
 
-# Informational flag, combined with an outcome above: no CDR row had the footprint's MET, so the row
-# was found by the footprint's start time instead (see rdr_updater).
+# Informational flag, combined with an outcome above: a unique CDR row was matched by start time
+# and its MET differs from the footprint's MET (see rdr_updater).
 FOOTPRINT_MATCHED_BY_TIME = 0x20
 
 {

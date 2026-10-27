@@ -48,14 +48,9 @@ VALID_FOR_SEARCH = and_(
     xrs.c.data_quality.op("&")(1) == 0,
 )
 
-# When no CDR row has the footprint's MET, rows are matched on start time alone: the nearest start
-# within this tolerance (footprint labels give whole seconds, CDR times have milliseconds).
+# Footprint labels give whole-second start times, while CDR times have milliseconds. Only rows this
+# close in time are considered; a MET match disambiguates multiple rows in the window.
 FOOTPRINT_TIME_TOLERANCE = timedelta(seconds=2)
-
-# How far (in time) a CDR row's start may be from a footprint label's start and still
-# match it; MET alone repeats between spacecraft clock partitions, which are years apart.
-FOOTPRINT_MATCH_WINDOW = timedelta(hours=1)
-
 
 XRS_INSERT_SQL = text("""
 INSERT INTO xrs (
@@ -93,21 +88,11 @@ ON CONFLICT (source_file, source_id) DO UPDATE SET
 # A reload keeps footprint_radius_km, sclk_partition and the external solar_intensity columns,
 # unless the boresight point changed: the radius was measured from it, so it is cleared.
 
-XRS_FOOTPRINT_LOOKUP_SQL = text("""
-SELECT id, met, observed_start, boresight_lat, boresight_lon, footprint_radius_km, sclk_partition
-FROM xrs
-WHERE met = :met
-  AND observed_start BETWEEN :window_start AND :window_end
-ORDER BY abs(extract(epoch FROM observed_start - :start_time)), id
-LIMIT 1
-""")
-
 XRS_FOOTPRINT_BY_TIME_SQL = text("""
 SELECT id, met, observed_start, boresight_lat, boresight_lon, footprint_radius_km, sclk_partition
 FROM xrs
 WHERE observed_start BETWEEN :window_start AND :window_end
 ORDER BY abs(extract(epoch FROM observed_start - :start_time)), id
-LIMIT 2
 """)
 
 # The SIS produces a footprint for every CDR observation whose FOV_STATUS is 1 (on the planet, lit) or
@@ -141,22 +126,10 @@ def db_xrs_insert(engine: Engine, records: Sequence[Mapping[str, object]]) -> No
         connection.execute(XRS_INSERT_SQL, records)
 
 
-def db_xrs_find_for_footprint(connection: Connection, met: int, start_time: datetime) -> RowMapping | None:
-    """The CDR row a footprint belongs to: same MET, with a start time within FOOTPRINT_MATCH_WINDOW
-    of the footprint label's start (the closest one if several). None if there is no such row."""
-    return connection.execute(XRS_FOOTPRINT_LOOKUP_SQL, {
-        "met": met,
-        "start_time": start_time,
-        "window_start": start_time - FOOTPRINT_MATCH_WINDOW,
-        "window_end": start_time + FOOTPRINT_MATCH_WINDOW,
-    }).mappings().first()
-
-
 def db_xrs_find_for_footprint_by_time(
     connection: Connection, start_time: datetime, tolerance: timedelta = FOOTPRINT_TIME_TOLERANCE
 ) -> list[RowMapping]:
-    """CDR rows (nearest first, at most two) that start within `tolerance` of a footprint's start time.
-    Two rows means the start time alone cannot tell which observation the footprint belongs to."""
+    """All CDR rows that start within `tolerance` of a footprint's start time, nearest first."""
     return list(connection.execute(XRS_FOOTPRINT_BY_TIME_SQL, {
         "start_time": start_time,
         "window_start": start_time - tolerance,

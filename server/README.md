@@ -43,6 +43,14 @@ downloader is an internal part of this command, so the normal workflow always
 downloads selected files before loading them. Files are always stored under
 `messenger_archive/xrs`.
 
+To apply downloaded RDR footprint files to the loaded CDR rows, run:
+
+    python -m database.load_rdr_records 2013-04-11 --rerun
+
+Footprints are matched to CDR observations by start time within two seconds.
+If multiple rows are in that window, an exact MET match disambiguates them;
+otherwise the footprint is reported as ambiguous.
+
 The `/api/xrs` endpoint can return spatial results after footprint radii have
 been loaded into `xrs.footprint_radius_km`.
 

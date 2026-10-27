@@ -81,3 +81,10 @@ def test_main_rejects_out_option():
         load_rdr_records.main(["2013-04-11", "--out", "custom"])
 
     assert exc_info.value.code == 2
+
+
+def test_main_no_longer_accepts_match_by_time_option():
+    with pytest.raises(SystemExit) as exc_info:
+        load_rdr_records.main(["2013-04-11", "--match-by-time"])
+
+    assert exc_info.value.code == 2
