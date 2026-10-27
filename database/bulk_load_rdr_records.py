@@ -18,8 +18,8 @@ from datetime import date
 from pathlib import Path
 
 
-MONTH = 8
-LAST_DAY = 31
+MONTH = 9
+LAST_DAY = 30
 DAYS = tuple(date(2013, MONTH, day) for day in range(1, LAST_DAY + 1))
 
 DATABASE_DIR = Path(__file__).resolve().parent
