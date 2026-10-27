@@ -13,6 +13,7 @@ from app.db import access
 from app.db.access import (
     FOOTPRINT_TIME_TOLERANCE, MERCURY_RADIUS_KM, WEIGHT_SIGMA_FRACTION,
     db_xrs_find_for_footprint_by_time, db_xrs_nearest_by_time, db_xrs_set_footprint,
+    get_max_xrs_search_radius_km,
     find_xrs_observations_near, near_observations_statement,
 )
 
@@ -24,6 +25,10 @@ KM_PER_DEGREE = MERCURY_RADIUS_KM * math.pi / 180
 def test_radius_matches_the_value_the_loaders_use():
     consts = pytest.importorskip("database.pds2db.consts")
     assert MERCURY_RADIUS_KM == consts.MERCURY_RADIUS_KM
+
+
+def test_max_search_radius_is_exposed_by_database_access():
+    assert get_max_xrs_search_radius_km() == 2500.0
 
 
 def test_search_statement_describes_the_overlap_test_and_the_weight():

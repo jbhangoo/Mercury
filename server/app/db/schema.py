@@ -1,17 +1,11 @@
 """
-SQLAlchemy definition of the xrs table, used to build queries.
+Internal SQLAlchemy definition of the xrs table.
 
 The table itself is created by database/DB_Create.sql. This module mirrors it
-so the API can write ``select(xrs.c.met).where(...)`` instead of repeating
-column names in SQL strings; it is never used to create or migrate tables
-(constraints and indexes live only in the SQL). tests/server/test_schema.py
-checks this module against that SQL, so a change to one without the other
-fails a test.
-
-    from app.db.schema import xrs, SUMMARY_COLUMNS
-    stmt = (select(*SUMMARY_COLUMNS)
-            .where(xrs.c.solar_flare_detected)
-            .order_by(xrs.c.observed_start.desc()))
+Database callers should use routines in :mod:`app.db.access`; this module
+contains the table metadata those routines use to build queries. The table
+is never used to create or migrate tables (constraints and indexes live in
+the SQL). tests/server/test_schema.py checks this module against that SQL.
 
 Positions are plain latitude/longitude columns (degrees on a sphere), not
 geometry types: boresight_lat/boresight_lon is where the instrument was pointing,

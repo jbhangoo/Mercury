@@ -4,12 +4,10 @@ from datetime import timezone
 from fastapi import APIRouter, HTTPException, Query, Request
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.db import find_xrs_observations_near
+from app.db import find_xrs_observations_near, get_max_xrs_search_radius_km
 
 xrs_router = APIRouter()
 log = logging.getLogger(__name__)
-
-MAX_RADIUS_KM = 2500.0   # about the planet's radius; larger circles are not useful
 
 
 @xrs_router.get("/xrs")
@@ -17,7 +15,7 @@ def get_xrs_details(
     request: Request,
     lon: float = Query(..., ge=-180, le=180, allow_inf_nan=False),
     lat: float = Query(..., ge=-90, le=90, allow_inf_nan=False),
-    radius_km: float = Query(0.0, ge=0, le=MAX_RADIUS_KM, allow_inf_nan=False),
+    radius_km: float = Query(0.0, ge=0, le=get_max_xrs_search_radius_km(), allow_inf_nan=False),
     limit: int = Query(100, ge=1, le=500),
 ) -> dict:
     """

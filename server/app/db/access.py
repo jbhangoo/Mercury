@@ -33,6 +33,8 @@ from sqlalchemy.engine import Connection, Engine, RowMapping
 
 from .schema import DETAIL_COLUMNS, xrs
 
+_MAX_XRS_SEARCH_RADIUS_KM = 2500.0
+
 # Same value as database/pds2db/consts.py (the server image does not contain that package;
 # tests/server/test_db_access.py checks the two stay equal).
 MERCURY_RADIUS_KM = 2439.4
@@ -118,6 +120,11 @@ LIMIT :count
 XRS_FOOTPRINT_UPDATE_SQL = text("""
 UPDATE xrs SET sclk_partition = :partition, footprint_radius_km = :radius_km WHERE id = :id
 """)
+
+
+def get_max_xrs_search_radius_km() -> float:
+    """Return the largest supported radius for an XRS spatial search."""
+    return _MAX_XRS_SEARCH_RADIUS_KM
 
 
 def db_xrs_insert(engine: Engine, records: Sequence[Mapping[str, object]]) -> None:
