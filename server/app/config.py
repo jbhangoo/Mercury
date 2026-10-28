@@ -1,5 +1,7 @@
 import os
 
+
+
 class Config:
     """
     Central place for app settings. Values are read from the environment

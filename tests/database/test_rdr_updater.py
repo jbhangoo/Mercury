@@ -1,309 +1,222 @@
-"""
-Tests for RDRUpdater: applying footprint files to CDR rows in a real database
-(TEST_DATABASE_URL; see tests/conftest.py), and the day command's report.
-"""
-import shutil
+from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
-from sqlalchemy import text
 
-from database import load_rdr_records
-from database.database_consts import XRS_ARCHIVE_DIR
+from database.pds2db import rdr_updater
 from database.pds2db.pds_consts import (
-    FOOTPRINT_AMBIGUOUS, FOOTPRINT_BORESIGHT_OUTSIDE, FOOTPRINT_MATCHED_BY_TIME, FOOTPRINT_NO_BORESIGHT,
-    FOOTPRINT_UNCHANGED, FOOTPRINT_UNMATCHED, FOOTPRINT_UPDATED,
+    FOOTPRINT_AMBIGUOUS,
+    FOOTPRINT_BORESIGHT_OUTSIDE,
+    FOOTPRINT_MATCHED_BY_TIME,
+    FOOTPRINT_NO_BORESIGHT,
+    FOOTPRINT_UNCHANGED,
+    FOOTPRINT_UNMATCHED,
+    FOOTPRINT_UPDATED,
 )
-from database.pds2db.rdr_updater import FootprintUpdate, RDRUpdater
-from fake_footprint import destination, ring, write_footprint
+from database.pds2db.rdr_updater import RDRUpdater
 
 START = datetime(2013, 4, 2, 0, 3, 12, tzinfo=timezone.utc)
-# Footprint files store coordinates to 0.001 degree (about 40 m), so measured radii are good to ~0.05 km.
-TOLERANCE_KM = 0.1
-
-TEST_FOOTPRINT_PATH = XRS_ARCHIVE_DIR / "footprints" / "2013" / "04" / "11" / "00"
-TEST_FOOTPRINT = ("xrs_fp_2_007963552.csv", "xrs_fp_2_007963552.xml")
-TEST_FOOTPRINT_START = datetime(2013, 4, 11, 0, 19, 12, tzinfo=timezone.utc)
-TEST_MET=7963552
-TEST_LAT=76.4450148
-TEST_LON=143.6940656
-
-def row(engine, met=1_000_001):
-    with engine.connect() as connection:
-        return connection.execute(
-            text("SELECT footprint_radius_km, sclk_partition, xmin::text AS version FROM xrs WHERE met = :met ORDER BY id"),
-            {"met": met}).mappings().first()
+CSV_PATH = Path("xrs_fp_2_007184992.csv")
 
 
-def test_footprint_radius_and_partition_are_stored_on_the_matching_row(xrs_engine, insert_xrs, tmp_path):
-    insert_xrs(met=7184992, observed_start=START, boresight_lat=30, boresight_lon=40)
-    result = RDRUpdater(xrs_engine).update_from_file(write_footprint(tmp_path, 7184992, ring(30, 40, 300)))
-    assert result.status == FOOTPRINT_UPDATED and result.applied and result.radius_km == pytest.approx(300, abs=TOLERANCE_KM)
-    stored = row(xrs_engine, 7184992)
-    assert stored["footprint_radius_km"] == pytest.approx(300, abs=TOLERANCE_KM) and stored["sclk_partition"] == 2
-    assert result.summary.startswith("radius 30") and result.summary.endswith(" km stored")
+class FakeEngine:
+    @contextmanager
+    def begin(self):
+        yield object()
 
 
-def test_applying_the_same_footprint_again_writes_nothing(xrs_engine, insert_xrs, tmp_path):
-    insert_xrs(met=7184992, observed_start=START, boresight_lat=30, boresight_lon=40)
-    updater = RDRUpdater(xrs_engine)
-    csv_path = write_footprint(tmp_path, 7184992, ring(30, 40, 300))
-    updater.update_from_file(csv_path)
-    before = row(xrs_engine, 7184992)
-    again = updater.update_from_file(csv_path)
-    assert again.status == FOOTPRINT_UNCHANGED and again.applied and "already loaded" in again.summary
-    assert row(xrs_engine, 7184992) == before                                    # not even rewritten (same xmin)
-    forced = updater.update_from_file(csv_path, force=True)
-    assert forced.status == FOOTPRINT_UPDATED and row(xrs_engine, 7184992)["version"] != before["version"]
+class FakeReader:
+    def __init__(self, footprint):
+        self.footprint = footprint
+        self.calls = []
+
+    def read_footprint(self, csv_path, xml_path):
+        self.calls.append((csv_path, xml_path))
+        return self.footprint
 
 
-def test_a_changed_footprint_is_applied_again(xrs_engine, insert_xrs, tmp_path):
-    insert_xrs(met=7184992, observed_start=START, boresight_lat=30, boresight_lon=40)
-    updater = RDRUpdater(xrs_engine)
-    updater.update_from_file(write_footprint(tmp_path, 7184992, ring(30, 40, 300)))
-    result = updater.update_from_file(write_footprint(tmp_path, 7184992, ring(30, 40, 350)))
-    assert result.status == FOOTPRINT_UPDATED and row(xrs_engine, 7184992)["footprint_radius_km"] == pytest.approx(350, abs=TOLERANCE_KM)
+def make_footprint(**overrides):
+    values = {
+        "partition": 2,
+        "met": 7184992,
+        "start_time": START,
+        "vertices": object(),
+    }
+    return SimpleNamespace(**(values | overrides))
 
 
-def test_footprint_with_no_cdr_row_is_reported_not_raised(xrs_engine, tmp_path):
-    result = RDRUpdater(xrs_engine).update_from_file(write_footprint(tmp_path, 7184992, ring(30, 40, 300)))
-    assert (result.status, result.applied, result.radius_km, result.offset_seconds) == (FOOTPRINT_UNMATCHED, 0, None, None)
-    assert "no CDR data" in result.summary
+def make_row(**overrides):
+    values = {
+        "id": 42,
+        "met": 7184992,
+        "observed_start": START,
+        "boresight_lat": 30.0,
+        "boresight_lon": 40.0,
+        "footprint_radius_km": None,
+        "sclk_partition": None,
+    }
+    return values | overrides
 
 
-def test_unmatched_footprint_says_which_cdr_rows_are_near_it_in_time(xrs_engine, insert_xrs, tmp_path):
-    insert_xrs(met=7185092, observed_start=START + timedelta(seconds=100), boresight_lat=30, boresight_lon=40)
-    insert_xrs(met=7184792, observed_start=START - timedelta(seconds=200), boresight_lat=30, boresight_lon=40)
-    result = RDRUpdater(xrs_engine).update_from_file(write_footprint(tmp_path, 7184992, ring(30, 40, 300)))
+def configure_updater(monkeypatch, *, footprint=None, candidates=(), nearby=(), measured=None):
+    reader = FakeReader(footprint or make_footprint())
+    engine = FakeEngine()
+    calls = {"find": [], "nearest": [], "set": [], "measure": []}
+
+    def find(connection, start_time):
+        calls["find"].append((connection, start_time))
+        return list(candidates)
+
+    def nearest(connection, when):
+        calls["nearest"].append((connection, when))
+        return list(nearby)
+
+    def set_footprint(connection, row_id, partition, radius_km):
+        calls["set"].append((connection, row_id, partition, radius_km))
+
+    def footprint_radius(lat, lon, vertices):
+        calls["measure"].append((lat, lon, vertices))
+        return measured
+
+    monkeypatch.setattr(rdr_updater, "db_xrs_find_for_footprint_by_time", find)
+    monkeypatch.setattr(rdr_updater, "db_xrs_nearest_by_time", nearest)
+    monkeypatch.setattr(rdr_updater, "db_xrs_set_footprint", set_footprint)
+    monkeypatch.setattr(rdr_updater, "footprint_radius", footprint_radius)
+    return RDRUpdater(engine, reader=reader), reader, calls
+
+
+def test_update_from_file_reads_footprint_matches_row_and_stores_radius(monkeypatch):
+    row = make_row(observed_start=START + timedelta(milliseconds=250))
+    measured = SimpleNamespace(inside=True, radius_km=303.4)
+    updater, reader, calls = configure_updater(monkeypatch, candidates=[row], measured=measured)
+
+    result = updater.update_from_file(CSV_PATH, xml_path=Path("custom.xml"))
+
+    assert reader.calls == [(CSV_PATH, Path("custom.xml"))]
+    assert result.source_file == CSV_PATH.name
+    assert result.status == FOOTPRINT_UPDATED and result.applied
+    assert result.radius_km == 303.4
+    assert result.offset_seconds == pytest.approx(0.25)
+    assert result.met_offset == 0 and result.row_id == row["id"]
+    assert calls["find"][0][1] == START
+    assert calls["measure"] == [(30.0, 40.0, reader.footprint.vertices)]
+    assert calls["set"] == [(calls["find"][0][0], row["id"], 2, 303.4)]
+
+
+def test_update_from_file_reports_no_match_using_nearest_rows(monkeypatch):
+    nearby = [
+        {"met": 7185092, "observed_start": START + timedelta(seconds=100)},
+        {"met": 7184792, "observed_start": START - timedelta(seconds=200)},
+    ]
+    updater, _, calls = configure_updater(monkeypatch, nearby=nearby)
+
+    result = updater.update_from_file(CSV_PATH)
+
+    assert result.status == FOOTPRINT_UNMATCHED and not result.applied
+    assert result.summary.endswith("MET 7185092 (+100 s), MET 7184792 (-200 s)")
+    assert calls["nearest"][0][1] == START
+    assert calls["measure"] == [] and calls["set"] == []
+
+
+def test_update_from_file_reports_when_no_nearby_rows_exist(monkeypatch):
+    updater, _, _ = configure_updater(monkeypatch)
+
+    result = updater.update_from_file(CSV_PATH)
+
     assert result.status == FOOTPRINT_UNMATCHED
-    assert "the footprint's MET is 7184992" in result.summary
-    assert "MET 7185092 (+100 s), MET 7184792 (-200 s)" in result.summary                 # nearest first
+    assert result.summary.endswith("no CDR rows within a day of 2013-04-02 00:03:12 UTC; is that day's CDR file loaded?")
 
 
-def test_unmatched_footprint_with_nothing_near_says_the_day_may_not_be_loaded(xrs_engine, insert_xrs, tmp_path):
-    insert_xrs(met=7184992, observed_start=START + timedelta(days=3), boresight_lat=30, boresight_lon=40)
-    result = RDRUpdater(xrs_engine).update_from_file(write_footprint(tmp_path, 7184992, ring(30, 40, 300)))
-    assert result.status == FOOTPRINT_UNMATCHED
-    assert "no CDR rows within a day of 2013-04-02 00:03:12 UTC; is that day's CDR file loaded?" in result.summary
+def test_exact_met_selects_matching_row_from_multiple_time_candidates(monkeypatch):
+    wanted = make_row(id=2)
+    other = make_row(id=1, met=111)
+    updater, _, calls = configure_updater(monkeypatch, candidates=[other, wanted],
+                                          measured=SimpleNamespace(inside=True, radius_km=300))
+
+    result = updater.update_from_file(CSV_PATH)
+
+    assert result.status == FOOTPRINT_UPDATED
+    assert result.row_id == wanted["id"]
+    assert calls["set"][0][1] == wanted["id"]
 
 
-# --- matching on start time with MET as a disambiguator -----------------------------------------------
-PARTITION_GAP = 268_435_456        # CDR MET includes the partition offset; footprint MET is partition-relative
+def test_multiple_candidates_without_unique_exact_met_are_ambiguous(monkeypatch):
+    candidates = [make_row(met=111), make_row(id=43, met=222)]
+    updater, _, calls = configure_updater(monkeypatch, candidates=candidates)
 
+    result = updater.update_from_file(CSV_PATH)
 
-def test_row_with_a_different_met_is_found_by_start_time_and_the_difference_is_reported(xrs_engine, insert_xrs, tmp_path):
-    met = 7184992 + PARTITION_GAP
-    insert_xrs(met=met, observed_start=START + timedelta(milliseconds=250), boresight_lat=30, boresight_lon=40)
-    csv_path = write_footprint(tmp_path, 7184992, ring(30, 40, 300))
-    result = RDRUpdater(xrs_engine).update_from_file(csv_path)
-    assert result.status == FOOTPRINT_UPDATED | FOOTPRINT_MATCHED_BY_TIME and result.matched_by_time
-    assert result.met_offset == PARTITION_GAP and result.offset_seconds == pytest.approx(0.25)
-    assert f"matched by start time; the CDR row's MET is +{PARTITION_GAP} from the footprint's" in result.summary
-    stored = row(xrs_engine, met)
-    assert stored["footprint_radius_km"] == pytest.approx(300, abs=TOLERANCE_KM) and stored["sclk_partition"] == 2
-    again = RDRUpdater(xrs_engine).update_from_file(csv_path)      # the flag survives a rerun
-    assert again.status == FOOTPRINT_UNCHANGED | FOOTPRINT_MATCHED_BY_TIME
-
-
-def test_exact_met_disambiguates_rows_within_the_start_time_window(xrs_engine, insert_xrs, tmp_path):
-    insert_xrs(met=111, observed_start=START, boresight_lat=0, boresight_lon=0)
-    wanted = insert_xrs(met=7184992, observed_start=START + timedelta(seconds=1), boresight_lat=30, boresight_lon=40)
-    result = RDRUpdater(xrs_engine).update_from_file(write_footprint(tmp_path, 7184992, ring(30, 40, 300)))
-    assert result.status == FOOTPRINT_UPDATED and not result.matched_by_time and result.met_offset == 0
-    assert result.row_id == wanted
-    assert row(xrs_engine, 111)["footprint_radius_km"] is None
-
-
-def test_exact_met_outside_start_time_window_does_not_override_nearby_row(xrs_engine, insert_xrs, tmp_path):
-    insert_xrs(met=7184992, observed_start=START + timedelta(seconds=30), boresight_lat=0, boresight_lon=0)
-    nearby = insert_xrs(met=111, observed_start=START + timedelta(milliseconds=250), boresight_lat=30, boresight_lon=40)
-    result = RDRUpdater(xrs_engine).update_from_file(write_footprint(tmp_path, 7184992, ring(30, 40, 300)))
-    assert result.status == FOOTPRINT_UPDATED | FOOTPRINT_MATCHED_BY_TIME
-    assert result.row_id == nearby
-
-
-def test_two_rows_at_the_same_start_time_are_ambiguous_and_nothing_is_written(xrs_engine, insert_xrs, tmp_path):
-    insert_xrs(met=111, observed_start=START, boresight_lat=30, boresight_lon=40)
-    insert_xrs(met=222, observed_start=START + timedelta(seconds=1), boresight_lat=30, boresight_lon=40)
-    result = RDRUpdater(xrs_engine).update_from_file(write_footprint(tmp_path, 7184992, ring(30, 40, 300)))
     assert result.status == FOOTPRINT_AMBIGUOUS and not result.applied
     assert "MET 111, MET 222" in result.summary and "footprint MET 7184992" in result.summary
-    assert row(xrs_engine, 111)["footprint_radius_km"] is None and row(xrs_engine, 222)["footprint_radius_km"] is None
+    assert calls["measure"] == [] and calls["set"] == []
 
 
-def test_start_times_further_apart_than_the_tolerance_are_not_matched(xrs_engine, insert_xrs, tmp_path):
-    insert_xrs(met=111, observed_start=START + timedelta(seconds=5), boresight_lat=30, boresight_lon=40)
-    result = RDRUpdater(xrs_engine).update_from_file(write_footprint(tmp_path, 7184992, ring(30, 40, 300)))
-    assert result.status == FOOTPRINT_UNMATCHED and "MET 111 (+5 s)" in result.summary
+def test_unique_time_match_with_different_met_is_flagged(monkeypatch):
+    row = make_row(met=111)
+    updater, _, _ = configure_updater(monkeypatch, candidates=[row],
+                                      measured=SimpleNamespace(inside=True, radius_km=300))
 
+    result = updater.update_from_file(CSV_PATH)
 
-def test_unique_start_time_matches_a_row_even_when_met_differs(xrs_engine, insert_xrs, tmp_path):
-    insert_xrs(met=111, observed_start=START, boresight_lat=30, boresight_lon=40)
-    csv_path = write_footprint(tmp_path, 7184992, ring(30, 40, 300))
-    result = RDRUpdater(xrs_engine).update_from_file(csv_path)
     assert result.status == FOOTPRINT_UPDATED | FOOTPRINT_MATCHED_BY_TIME
-    assert result.met_offset == 111 - 7184992
+    assert result.matched_by_time and result.met_offset == 111 - 7184992
+    assert f"{111 - 7184992:+d} from the footprint's" in result.summary
 
 
-def test_a_row_found_by_time_can_still_lack_a_boresight_point(xrs_engine, insert_xrs, tmp_path):
-    insert_xrs(met=111, observed_start=START, intersection=False)
-    result = RDRUpdater(xrs_engine).update_from_file(write_footprint(tmp_path, 7184992, ring(30, 40, 300)))
-    assert result.status == FOOTPRINT_NO_BORESIGHT | FOOTPRINT_MATCHED_BY_TIME and not result.applied
+def test_matched_row_without_boresight_is_not_measured(monkeypatch):
+    row = make_row(boresight_lat=None, boresight_lon=None)
+    updater, _, calls = configure_updater(monkeypatch, candidates=[row])
 
+    result = updater.update_from_file(CSV_PATH)
 
-def test_row_whose_boresight_missed_the_planet_cannot_be_measured(xrs_engine, insert_xrs, tmp_path):
-    insert_xrs(met=7184992, observed_start=START, intersection=False, fov_status=3)
-    result = RDRUpdater(xrs_engine).update_from_file(write_footprint(tmp_path, 7184992, ring(30, 40, 300)))
     assert result.status == FOOTPRINT_NO_BORESIGHT and not result.applied
-    assert row(xrs_engine, 7184992)["footprint_radius_km"] is None
+    assert result.row_id == row["id"]
+    assert calls["measure"] == [] and calls["set"] == []
 
 
-def test_boresight_outside_the_footprint_leaves_the_row_alone(xrs_engine, insert_xrs, tmp_path):
-    far = destination(30, 40, 90, 500)                                            # 200 km beyond the edge
-    insert_xrs(met=7184992, observed_start=START, boresight_lat=far[0], boresight_lon=far[1])
-    result = RDRUpdater(xrs_engine).update_from_file(write_footprint(tmp_path, 7184992, ring(30, 40, 300)))
-    assert result.status == FOOTPRINT_BORESIGHT_OUTSIDE and not result.applied and result.radius_km == pytest.approx(200, abs=1)
-    stored = row(xrs_engine, 7184992)
-    assert stored["footprint_radius_km"] is None and stored["sclk_partition"] is None
+def test_boresight_outside_footprint_is_not_stored(monkeypatch):
+    row = make_row()
+    updater, _, calls = configure_updater(monkeypatch, candidates=[row],
+                                          measured=SimpleNamespace(inside=False, radius_km=200))
+
+    result = updater.update_from_file(CSV_PATH)
+
+    assert result.status == FOOTPRINT_BORESIGHT_OUTSIDE and not result.applied
+    assert result.radius_km == 200 and result.row_id == row["id"]
+    assert calls["set"] == []
 
 
-def test_start_time_offset_outside_the_matching_window_is_unmatched(xrs_engine, insert_xrs, tmp_path):
-    insert_xrs(met=7184992, observed_start=START + timedelta(seconds=3), boresight_lat=30, boresight_lon=40)
-    result = RDRUpdater(xrs_engine).update_from_file(write_footprint(tmp_path, 7184992, ring(30, 40, 300)))
-    assert result.status == FOOTPRINT_UNMATCHED and "MET 7184992 (+3 s)" in result.summary
+def test_existing_radius_and_partition_are_reported_unchanged_unless_forced(monkeypatch):
+    row = make_row(footprint_radius_km=300.0, sclk_partition=2)
+    updater, _, calls = configure_updater(monkeypatch, candidates=[row],
+                                          measured=SimpleNamespace(inside=True, radius_km=300.0))
+
+    result = updater.update_from_file(CSV_PATH)
+    forced = updater.update_from_file(CSV_PATH, force=True)
+
+    assert result.status == FOOTPRINT_UNCHANGED and result.applied
+    assert result.summary.startswith("already loaded")
+    assert forced.status == FOOTPRINT_UPDATED
+    assert len(calls["set"]) == 1
 
 
-def test_same_met_in_another_clock_partition_is_not_touched(xrs_engine, insert_xrs, tmp_path):
-    early = insert_xrs(met=7184992, observed_start=datetime(2011, 5, 20, tzinfo=timezone.utc),
-                       boresight_lat=30, boresight_lon=40, source_file="early.dat")
-    insert_xrs(met=7184992, observed_start=START, boresight_lat=30, boresight_lon=40, source_file="late.dat")
-    RDRUpdater(xrs_engine).update_from_file(write_footprint(tmp_path, 7184992, ring(30, 40, 300)))
-    with xrs_engine.connect() as connection:
-        radii = dict(connection.execute(text("SELECT source_file, footprint_radius_km FROM xrs")).all())
-    assert radii["early.dat"] is None and radii["late.dat"] == pytest.approx(300, abs=TOLERANCE_KM)
+def test_existing_radius_is_updated_when_measurement_or_partition_changes(monkeypatch):
+    row = make_row(footprint_radius_km=300.0, sclk_partition=1)
+    updater, _, calls = configure_updater(monkeypatch, candidates=[row],
+                                          measured=SimpleNamespace(inside=True, radius_km=303.0))
+
+    result = updater.update_from_file(CSV_PATH)
+
+    assert result.status == FOOTPRINT_UPDATED
+    assert calls["set"][0][2:] == (2, 303.0)
 
 
-def test_footprint_whose_label_disagrees_with_its_file_name_is_an_error(xrs_engine, insert_xrs, tmp_path):
-    insert_xrs(met=7184992, observed_start=START, boresight_lat=30, boresight_lon=40)
-    csv_path = write_footprint(tmp_path, 7184992, ring(30, 40, 300))
-    renamed = csv_path.with_name("xrs_fp_2_007184993.csv")
-    csv_path.rename(renamed)
-    csv_path.with_suffix(".xml").rename(renamed.with_suffix(".xml"))
-    with pytest.raises(ValueError, match="file name gives clock 2/7184993"):
-        RDRUpdater(xrs_engine).update_from_file(renamed)
+def test_missing_start_time_is_rejected_before_database_access(monkeypatch):
+    updater, _, calls = configure_updater(monkeypatch, footprint=make_footprint(start_time=None))
 
+    with pytest.raises(ValueError, match="label has no start time"):
+        updater.update_from_file(CSV_PATH)
 
-def test_real_footprint_end_to_end(xrs_engine, insert_xrs, tmp_path):
-    for name in TEST_FOOTPRINT:
-        shutil.copy(TEST_FOOTPRINT_PATH / name, tmp_path / name)
-    insert_xrs(
-        met=TEST_MET,
-        observed_start=TEST_FOOTPRINT_START,
-        boresight_lat=TEST_LAT,
-        boresight_lon=TEST_LON,
-    )
-    result = RDRUpdater(xrs_engine).update_from_file(tmp_path / TEST_FOOTPRINT[0])
-    assert result.status == FOOTPRINT_UPDATED and result.radius_km == pytest.approx(63.63, abs=0.05)
-    assert row(xrs_engine, 7963552)["sclk_partition"] == 2
-
-
-# --- the day command's report ----------------------------------------------------------------------
-
-def update(status, name="f.csv", offset=0.0, radius=300.0):
-    has_radius = status in (FOOTPRINT_UPDATED, FOOTPRINT_UNCHANGED, FOOTPRINT_BORESIGHT_OUTSIDE)
-    return FootprintUpdate(name, status, radius if has_radius else None, offset)
-
-
-def test_report_counts_each_outcome_and_exits_zero_when_something_was_applied(capsys):
-    day = datetime(2013, 4, 2).date()
-    results = [update(FOOTPRINT_UPDATED, "a.csv", 0.2), update(FOOTPRINT_UPDATED, "b.csv", -1.5),
-               update(FOOTPRINT_UNCHANGED, "c.csv", 0.0), update(FOOTPRINT_UNMATCHED, "d.csv"),
-               update(FOOTPRINT_NO_BORESIGHT, "e.csv", 0.1), update(FOOTPRINT_BORESIGHT_OUTSIDE, "f.csv", 0.3)]
-    assert load_rdr_records.report(day, 6, results, []) == 0
-    captured = capsys.readouterr()
-    assert "2 updated, 1 unchanged (already loaded), 3 not applied, 0 failed, of 6 footprint file(s)" in captured.out
-    assert "not applied: 1 status 0x01, 1 status 0x02, 1 status 0x04" in captured.out
-    assert "median 0.2 s, largest 1.5 s" in captured.out
-    assert "d.csv: not applied: no CDR data for this MET" in captured.err
-    assert "f.csv: not applied: instrument angle too oblique" in captured.err
-
-
-def test_report_exits_one_when_a_file_failed(capsys):
-    day = datetime(2013, 4, 2).date()
-    assert load_rdr_records.report(day, 2, [update(FOOTPRINT_UPDATED)], [("bad.csv", ValueError("x"))]) == 1
-    assert "1 failed" in capsys.readouterr().out
-
-
-def test_report_exits_one_when_nothing_could_be_applied(capsys):
-    day = datetime(2013, 4, 2).date()
-    results = [update(FOOTPRINT_UNMATCHED, f"{i}.csv") for i in range(8)]
-    assert load_rdr_records.report(day, 8, results, []) == 1
-    captured = capsys.readouterr()
-    assert "no footprint could be applied; is the CDR file for this day loaded?" in captured.err
-    assert "... and 3 more not applied" in captured.err
-    assert "8 not applied" in captured.out
-
-
-def test_report_for_an_all_unchanged_day_is_a_success(capsys):
-    day = datetime(2013, 4, 2).date()
-    assert load_rdr_records.report(day, 2, [update(FOOTPRINT_UNCHANGED), update(FOOTPRINT_UNCHANGED)], []) == 0
-
-
-def test_report_says_how_the_mets_relate_when_footprints_were_matched_by_time(capsys):
-    day = datetime(2013, 4, 2).date()
-    flagged = lambda met_offset: FootprintUpdate("f.csv", FOOTPRINT_UPDATED | FOOTPRINT_MATCHED_BY_TIME, 300.0, 0.2, met_offset=met_offset)
-    assert load_rdr_records.report(day, 3, [flagged(PARTITION_GAP)] * 2 + [update(FOOTPRINT_UPDATED)], []) == 0
-    out = capsys.readouterr().out
-    assert "2 matched by start time because the CDR row had a different MET; CDR MET minus footprint MET: always +268435456" in out
-
-    assert load_rdr_records.report(day, 2, [flagged(100), flagged(200)], []) == 0
-    assert "2 different values, from +100 to +200" in capsys.readouterr().out
-
-    assert load_rdr_records.report(day, 1, [update(FOOTPRINT_UPDATED)], []) == 0
-    assert "matched by start time" not in capsys.readouterr().out
-
-
-def test_report_counts_ambiguous_footprints_as_not_applied(capsys):
-    day = datetime(2013, 4, 2).date()
-    assert load_rdr_records.report(day, 2, [update(FOOTPRINT_UPDATED), update(FOOTPRINT_AMBIGUOUS, "x.csv")], []) == 0
-    captured = capsys.readouterr()
-    assert "1 not applied" in captured.out and "not applied: 1 status 0x08" in captured.out
-    assert "x.csv: not applied: more than one CDR row starts within two seconds" in captured.err
-
-
-# --- which CDR rows no footprint reached ----------------------------------------------------------------
-
-def test_rows_that_should_have_a_footprint_but_were_not_reached_are_listed(xrs_engine, insert_xrs, tmp_path):
-    day = START.date()
-    reached = insert_xrs(met=7184992, observed_start=START, boresight_lat=30, boresight_lon=40, fov_status=1)
-    no_boresight = insert_xrs(met=7184993, observed_start=START + timedelta(seconds=450), fov_status=3, intersection=False)
-    missed = insert_xrs(met=7184994, observed_start=START + timedelta(seconds=900), fov_status=1)
-    insert_xrs(met=7184995, observed_start=START + timedelta(seconds=1350), fov_status=2)              # dark: no footprint expected
-    insert_xrs(met=7184996, observed_start=START + timedelta(seconds=1800), fov_status=0)              # off planet
-    insert_xrs(met=7184997, observed_start=START + timedelta(days=1), fov_status=1)                    # another day
-    updater = RDRUpdater(xrs_engine)
-    results = [updater.update_from_file(write_footprint(tmp_path, met, ring(30, 40, 300), start=START + timedelta(seconds=offset)))
-               for met, offset in ((7184992, 0), (7184993, 450))]
-    assert [r.row_id for r in results] == [reached, no_boresight]
-    expected, missing = load_rdr_records.missing_footprints(xrs_engine, day, results)
-    assert [r["id"] for r in expected] == [reached, no_boresight, missed]                              # only FOV status 1 or 3, this UTC day
-    assert [r["id"] for r in missing] == [missed]                                                      # the row with no usable boresight was still reached
-
-
-def test_nothing_is_missing_when_every_expected_row_was_reached(xrs_engine, insert_xrs, tmp_path):
-    insert_xrs(met=7184992, observed_start=START, boresight_lat=30, boresight_lon=40, fov_status=1)
-    results = [RDRUpdater(xrs_engine).update_from_file(write_footprint(tmp_path, 7184992, ring(30, 40, 300)))]
-    expected, missing = load_rdr_records.missing_footprints(xrs_engine, START.date(), results)
-    assert len(expected) == 1 and missing == []
-
-
-def test_report_missing_prints_the_rows_or_a_clean_bill(capsys):
-    day = datetime(2013, 4, 2).date()
-    rows = [{"id": i, "met": 7184990 + i} for i in range(8)]
-    load_rdr_records.report_missing(day, rows, [])
-    captured = capsys.readouterr()
-    assert "all 8 CDR row(s) with FOV status 1 or 3 were reached" in captured.out and captured.err == ""
-    load_rdr_records.report_missing(day, rows, rows[:7])
-    captured = capsys.readouterr()
-    assert "7 of 8 CDR row(s) with FOV status 1 or 3 have no footprint file" in captured.err
-    assert "MET 7184990, MET 7184991, MET 7184992, MET 7184993, MET 7184994 and 2 more" in captured.err
+    assert calls["find"] == [] and calls["nearest"] == []

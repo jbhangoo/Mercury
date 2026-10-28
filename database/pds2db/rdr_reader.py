@@ -9,9 +9,9 @@ start and stop times and its spacecraft clock counts. The partition and MET that
 tie a footprint to its CDR row are in the file name, and the label repeats them
 as "<partition>/<MET>"; read_footprint() checks that the two agree.
 
-    from database.pds2db.rdr_reader import read_rdr, parse_footprint_name
-    vertices = read_rdr("xrs_fp_2_007976872.csv")   # label found beside the file
-    vertices["latitude"], vertices["longitude"]
+    from database.pds2db.rdr_reader import RDRReader, parse_footprint_name
+    footprint = RDRReader().read_footprint("xrs_fp_2_007976872.csv")
+    footprint.vertices["latitude"], footprint.vertices["longitude"]
     partition, met = parse_footprint_name("xrs_fp_2_007976872.csv")
 
 Longitudes are returned as stored. The SIS calls them east longitudes without
@@ -155,22 +155,6 @@ def _validate(csv_name: str, vertices: np.ndarray) -> None:
         raise ValueError(f"{csv_name}: longitude outside -180..360")
 
 
-def read_rdr(
-    csv_path: str | Path,
-    xml_path: str | Path | None = None,
-    *,
-    validate: bool = True,
-) -> np.ndarray:
-    """Reads a footprint CSV into a structured array of (latitude, longitude) vertices.
-
-    xml_path defaults to the .xml beside the CSV. The vertex count is checked
-    against the label, and with validate=True the coordinates are checked to be
-    finite and in range."""
-    csv_path = Path(csv_path)
-    xml_path = Path(xml_path) if xml_path else csv_path.with_suffix(".xml")
-    return _read_vertices(csv_path, read_rdr_label(xml_path), validate)
-
-
 def _read_vertices(csv_path: Path, label: RDRLabel, validate: bool) -> np.ndarray:
     _check_field_names(csv_path.name, label.field_names)
 
@@ -200,15 +184,6 @@ class RDRReader:
 
     def __init__(self, *, validate: bool = True):
         self.validate = validate
-
-    def read(
-        self,
-        csv_path: str | Path,
-        xml_path: str | Path | None = None,
-        *,
-        validate: bool | None = None,
-    ) -> np.ndarray:
-        return read_rdr(csv_path, xml_path, validate=self.validate if validate is None else validate)
 
     def read_footprint(
         self,

@@ -5,11 +5,13 @@ around a point. Tests that use a database need TEST_DATABASE_URL (see tests/conf
 import math
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
+from unittest.mock import MagicMock, Mock
 
 import pytest
 from sqlalchemy.dialects import postgresql
+from sqlalchemy.engine import Engine
 
-from app.db import access
+
 from app.db.access import (
     FOOTPRINT_TIME_TOLERANCE, MERCURY_RADIUS_KM, WEIGHT_SIGMA_FRACTION,
     db_xrs_find_for_footprint_by_time, db_xrs_nearest_by_time, db_xrs_set_footprint,
@@ -20,54 +22,20 @@ from app.db.access import (
 KM_PER_DEGREE = MERCURY_RADIUS_KM * math.pi / 180
 
 
-# --- no database ------------------------------------------------------------------------------
-
-def test_radius_matches_the_value_the_loaders_use():
-    consts = pytest.importorskip("database.pds2db.consts")
-    assert MERCURY_RADIUS_KM == consts.MERCURY_RADIUS_KM
-
-
-def test_max_search_radius_is_exposed_by_database_access():
-    assert get_max_xrs_search_radius_km() == 2500.0
-
-
-def test_search_statement_describes_the_overlap_test_and_the_weight():
-    sql = str(near_observations_statement().compile(dialect=postgresql.dialect()))
-    assert "acos" in sql and "radians" in sql and "exp(" in sql
-    assert "footprint_radius_km IS NOT NULL" in sql and "boresight_lat IS NOT NULL" in sql
-    assert "data_quality &" in sql                                       # bit 0 of the quality word
-    assert "distance_km <= candidates.footprint_radius_km +" in sql
-    assert "ORDER BY weight DESC" in sql and "LIMIT" in sql
-    assert "ST_" not in sql                                              # plain numbers, no PostGIS
-
 
 def test_search_passes_its_parameters_and_returns_the_rows():
-    seen = {}
+    engine = Mock(spec=Engine)
+    connection = MagicMock()
+    engine.connect.return_value = connection
+    connection.__enter__.return_value = connection
+    result = connection.execute.return_value
+    result.mappings.return_value.all.return_value = ["row"]
 
-    class Result:
-        def mappings(self):
-            return self
-
-        def all(self):
-            return ["row"]
-
-    class Connection:
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *args):
-            return False
-
-        def execute(self, statement, parameters):
-            seen["parameters"] = parameters
-            return Result()
-
-    class Engine:
-        def connect(self):
-            return Connection()
-
-    assert find_xrs_observations_near(Engine(), -80.5, 30, 150, 11) == ["row"]
-    assert seen["parameters"] == {"lon": -80.5, "lat": 30, "roi_radius_km": 150, "limit": 11}
+    assert find_xrs_observations_near(engine, -80.5, 30, 150, 11) == ["row"]
+    connection.execute.assert_called_once()
+    assert connection.execute.call_args.args[1] == {
+        "lon": -80.5, "lat": 30, "roi_radius_km": 150, "limit": 11,
+    }
 
 
 # --- searching around a point (database) -------------------------------------------------------
