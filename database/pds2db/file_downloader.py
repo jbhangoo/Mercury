@@ -3,7 +3,7 @@ import os
 import re
 from collections.abc import Callable
 from html.parser import HTMLParser
-from urllib.parse import unquote, urljoin
+from urllib.parse import urljoin
 
 import requests
 from requests.adapters import HTTPAdapter
@@ -87,13 +87,6 @@ def list_dir(
         output.append((child, is_dir, size))
 
     return output, None
-
-
-def local_path(out_root: str, root: str, url: str) -> tuple[str, str]:
-    """Map a URL beneath an archive root to its relative and local paths."""
-    base = root.rstrip("/").rsplit("/", 1)[0] + "/"
-    relative = unquote(url[len(base):])
-    return relative, os.path.join(out_root, *relative.split("/"))
 
 
 def download(

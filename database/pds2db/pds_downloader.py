@@ -1,50 +1,34 @@
 """
 Internal downloader for MESSENGER XRS products from the PDS Geosciences Node.
-
-The downloader selects the extensions needed by the XRS database loader and
-verifies files against an MD5 checksum when one is published in the PDS4 XML
-label. Downloads are also checked against the archive listing's file size.
-A failed checksum deletes the file and is reported as an error.
-
-``database.load_cds_records`` uses this to download CDR files and load them into the
-database in one operation.
-
-``database.load_rdr_records`` uses this to download RDR files and load them into the
-database in one operation.
 """
 import csv
 import os
 import sys
 from concurrent.futures import ThreadPoolExecutor
+from datetime import date
+from urllib.parse import unquote, urlsplit
 
 from ..database_consts import XRS_ARCHIVE_DIR
-from .file_downloader import download, list_dir, local_path, make_session
+from .file_downloader import download, list_dir, make_session
 from .pds4_checksum import verify_file
 
-RDR_DATA = "https://pds-geosciences.wustl.edu/messenger/mess-h-xrs-3-rdr-maps-v1/messxrs_3001/data"
+RDR_DATA = "https://pds-geosciences.wustl.edu/messenger/mess-h-xrs-3-rdr-maps-v1/messxrs_3001/data/footprints/"
 CDR_DATA = "https://pds-geosciences.wustl.edu/messenger/mess-e_v_h-xrs-3-cdr-spectra-v1/messxrs_2001/data/"
+RDR_EXTS = {"csv", "xml"}
+CDR_EXTS = {"dat", "xml"}
 
-# The CDR loader needs data records and their XML labels. RDR products use CSV.
-REQUIRED_EXTENSIONS = {
-    "cdr": {"dat", "xml"},
-    "rdr": {"csv", "xml"},
-}
 
 CHUNK = 5000
+WORKERS = 4
 
 
-def in_range(parts, start, end):
-    """Compare numeric archive path components with inclusive bounds."""
-    n = len(parts)
-    s, e = start[:n], end[:n]
-    return parts[:len(s)] >= s and parts[:len(e)] <= e
-
-
-def crawl(session, root, start, end, workers):
+def crawl(session, root: str, target_date: date):
+    """List files beneath one PDS day directory, including any nested hour directories."""
     files, errors = [], []
-    level = [root]
+    day_root = f"{root.rstrip('/')}/{target_date:%Y/%m/%d}/"
+    level = [day_root]
 
-    with ThreadPoolExecutor(workers) as pool:
+    with ThreadPoolExecutor(WORKERS) as pool:
         while level:
             next_level = []
             for entries, error in pool.map(lambda u: list_dir(session, u), level):
@@ -56,78 +40,49 @@ def crawl(session, root, start, end, workers):
                         files.append((child, size))
                         continue
 
-                    relative = child[len(root):].strip("/").split("/")
-                    if (
-                        relative
-                        and all(part.isdigit() for part in relative)
-                        and not in_range(tuple(map(int, relative)), start, end)
-                    ):
-                        continue
                     next_level.append(child)
 
-            print(
-                f" listed {len(level)} directories, "
-                f"{len(files)} files found so far",
-                flush=True,
-            )
             level = next_level
 
     return files, errors
 
 
-def parse_date(text):
-    return tuple(int(part) for part in text.split("-")) if text else ()
-
-
 def extension(url):
+    """Return the file extension of a URL, or an empty string if none."""
     filename = url.rsplit("/", 1)[-1]
     return filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
 
 
-def download_products(
-    data_type: str,
-    *,
-    out: str | os.PathLike[str] = XRS_ARCHIVE_DIR,
-    start_date: str | None = None,
-    end_date: str | None = None,
-    workers: int = 4,
+def _download_files(
+    target_date: date,
+    source: str,
+    required_extensions: set[str],
     dry_run: bool = False,
 ) -> int:
-    """Download selected CDR or RDR products; return nonzero if any operation failed."""
-    if data_type not in REQUIRED_EXTENSIONS:
-        raise ValueError(f"unsupported XRS data type: {data_type!r}")
-    if workers < 1:
-        raise ValueError("workers must be positive")
+    """Common core function handling crawling, filtering, downloading, and logging."""
 
-    if data_type == "rdr":
-        data_root = RDR_DATA
-        roots = [f"{data_root.rstrip('/')}/footprints/"]
-    else:
-        data_root = CDR_DATA
-        roots = [data_root]
+    session = make_session(WORKERS, user_agent="messenger-xrs-fetch/1.1")
 
-    start, end = parse_date(start_date), parse_date(end_date)
-    session = make_session(
-        workers,
-        user_agent="messenger-xrs-fetch/1.1",
-    )
     problems = 0
     todo = []
+    out = XRS_ARCHIVE_DIR
 
-    required_extensions = REQUIRED_EXTENSIONS[data_type]
+    print(f"Crawling {source}")
+    files, errors = crawl(session, source, target_date)
+    for error in errors:
+        print(f"LISTING FAILED: {error}", file=sys.stderr)
+    problems += len(errors)
 
-    for root in roots:
-        print(f"Crawling {root}")
-        files, errors = crawl(session, root, start, end, workers)
-        for error in errors:
-            print(f"LISTING FAILED: {error}", file=sys.stderr)
-        problems += len(errors)
-
-        for url, size in files:
-            if extension(url) not in required_extensions:
-                continue
-            relative, destination = local_path(os.fspath(out), root, url)
-            todo.append((url, size, relative, destination))
+    for url, size in files:
+        if extension(url) not in required_extensions:
+            continue
+        path = unquote(urlsplit(url).path)
+        if source == RDR_DATA:
+            relative = f"footprints/{path.split('/footprints/', 1)[1]}"
+        else:
+            relative = f"data/{path.split('/data/', 1)[1]}"
+        destination = os.path.join(out, *relative.split("/"))
+        todo.append((url, size, relative, destination))
 
     print(
         f"{len(todo)} files selected "
@@ -146,7 +101,7 @@ def download_products(
 
     with (
         open(os.path.join(out, "manifest.csv"), "w", newline="", encoding="utf-8") as manifest,
-        ThreadPoolExecutor(workers) as pool,
+        ThreadPoolExecutor(WORKERS) as pool,
     ):
         writer = csv.writer(manifest)
         writer.writerow(["path", "status", "error"])
@@ -172,10 +127,6 @@ def download_products(
 
             completed = min(start_index + len(batch), len(todo))
             print(f"{completed}/{len(todo)} files processed", flush=True)
-            if counts["failed"]:
-                print(f"  {counts['failed']} failed!", file=sys.stderr)
-            if counts["skipped"]:
-                print(f"  {counts['skipped']} skipped.", file=sys.stderr)
 
     problems += counts["failed"]
     print(f"Wrote {counts['downloaded']} file(s) to {os.path.abspath(out)}")
@@ -184,3 +135,29 @@ def download_products(
     if counts["failed"]:
         print(f"   {counts['failed']} file(s) failed!", file=sys.stderr)
     return 1 if problems else 0
+
+
+def download_cdr_day(
+    target_date: date,
+    dry_run: bool = False,
+) -> int:
+    """Download CDR data files and XML labels for a specific date."""
+    return _download_files(
+        target_date=target_date,
+        source=CDR_DATA,
+        required_extensions=CDR_EXTS,
+        dry_run=dry_run,
+    )
+
+
+def download_rdr_day(
+    target_date: date,
+    dry_run: bool = False,
+) -> int:
+    """Download RDR footprint CSV files and XML labels for a specific date."""
+    return _download_files(
+        target_date=target_date,
+        source=RDR_DATA,
+        required_extensions=RDR_EXTS,
+        dry_run=dry_run,
+    )

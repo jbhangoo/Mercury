@@ -14,11 +14,18 @@ from database.pds2db.pds_consts import (
     FOOTPRINT_UNCHANGED,
     FOOTPRINT_UNMATCHED,
     FOOTPRINT_UPDATED,
+    MET_PARTITION_STRIDE,
 )
-from database.pds2db.rdr_updater import RDRUpdater
+from database.pds2db.cdr_parser import parse_utc
+from database.pds2db.cdr_reader import CDRReader
+from database.pds2db.rdr_reader import RDRReader
+from database.pds2db.rdr_updater import RDRUpdater, cdr_met_for
 
 START = datetime(2013, 4, 2, 0, 3, 12, tzinfo=timezone.utc)
 CSV_PATH = Path("xrs_fp_2_007184992.csv")
+FOOTPRINT_MET = 7184992
+EXPECTED_CDR_MET = FOOTPRINT_MET + MET_PARTITION_STRIDE
+SAMPLE_FILES = Path(__file__).parents[1] / "sample_files"
 
 
 class FakeEngine:
@@ -40,7 +47,7 @@ class FakeReader:
 def make_footprint(**overrides):
     values = {
         "partition": 2,
-        "met": 7184992,
+        "met": FOOTPRINT_MET,
         "start_time": START,
         "vertices": object(),
     }
@@ -50,7 +57,7 @@ def make_footprint(**overrides):
 def make_row(**overrides):
     values = {
         "id": 42,
-        "met": 7184992,
+        "met": EXPECTED_CDR_MET,
         "observed_start": START,
         "boresight_lat": 30.0,
         "boresight_lon": 40.0,
@@ -58,6 +65,24 @@ def make_row(**overrides):
         "sclk_partition": None,
     }
     return values | overrides
+
+
+def test_partition_translation_matches_sample_cdr_record():
+    footprint = RDRReader().read_footprint(SAMPLE_FILES / "xrs_fp_2_007963552.csv")
+    rows = CDRReader().read(SAMPLE_FILES / "xrscdr2013101.dat")
+    assert footprint.start_time is not None
+
+    time_matches = [
+        (int(row["met"]), observed_start)
+        for row, observed_start in zip(rows, parse_utc(rows["utc"]))
+        if abs((observed_start - footprint.start_time).total_seconds()) <= 2
+    ]
+
+    assert len(time_matches) == 1
+    cdr_met, observed_start = time_matches[0]
+    assert cdr_met == cdr_met_for(footprint)
+    assert cdr_met - footprint.met == MET_PARTITION_STRIDE
+    assert abs((observed_start - footprint.start_time).total_seconds()) <= 2
 
 
 def configure_updater(monkeypatch, *, footprint=None, candidates=(), nearby=(), measured=None):
@@ -149,7 +174,11 @@ def test_multiple_candidates_without_unique_exact_met_are_ambiguous(monkeypatch)
     result = updater.update_from_file(CSV_PATH)
 
     assert result.status == FOOTPRINT_AMBIGUOUS and not result.applied
-    assert "MET 111, MET 222" in result.summary and "footprint MET 7184992" in result.summary
+    assert (
+        "MET 111, MET 222" in result.summary
+        and f"footprint MET {FOOTPRINT_MET}" in result.summary
+        and f"expected CDR MET {EXPECTED_CDR_MET}" in result.summary
+    )
     assert calls["measure"] == [] and calls["set"] == []
 
 
@@ -161,8 +190,8 @@ def test_unique_time_match_with_different_met_is_flagged(monkeypatch):
     result = updater.update_from_file(CSV_PATH)
 
     assert result.status == FOOTPRINT_UPDATED | FOOTPRINT_MATCHED_BY_TIME
-    assert result.matched_by_time and result.met_offset == 111 - 7184992
-    assert f"{111 - 7184992:+d} from the footprint's" in result.summary
+    assert result.matched_by_time and result.met_offset == 111 - EXPECTED_CDR_MET
+    assert f"{111 - EXPECTED_CDR_MET:+d} from the expected MET" in result.summary
 
 
 def test_matched_row_without_boresight_is_not_measured(monkeypatch):

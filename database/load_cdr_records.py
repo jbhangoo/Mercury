@@ -32,10 +32,10 @@ HERE = Path(__file__).resolve().parent
 
 if __package__:
     from .database_consts import XRS_ARCHIVE_DIR
-    from .pds2db.pds_downloader import download_products
+    from .pds2db.pds_downloader import download_cdr_day
 else:
     from database.database_consts import XRS_ARCHIVE_DIR
-    from database.pds2db.pds_downloader import download_products
+    from database.pds2db.pds_downloader import download_cdr_day
 
 
 def resolve_dsn() -> str | None:
@@ -48,22 +48,12 @@ def resolve_dsn() -> str | None:
     return re.sub(r"^postgres(?:ql)?(?:\+\w+)?://", "postgresql+psycopg://", dsn) if dsn else None
 
 
-def day_files(out: Path, day: date) -> list[Path]:
-    folder = out / "data" / f"{day:%Y}" / f"{day:%m}" / f"{day:%d}"
+def day_files(day: date) -> list[Path]:
+    folder = XRS_ARCHIVE_DIR / "data" / f"{day:%Y}" / f"{day:%m}" / f"{day:%d}"
     if not folder.is_dir():
         return []
     return sorted(p for p in folder.iterdir()
                   if p.is_file() and p.suffix.lower() == ".dat" and p.name.lower().startswith("xrscdr"))
-
-
-def download_day(out: Path, day: date) -> int:
-    return download_products(
-        "cdr",
-        out=out,
-        start_date=day.isoformat(),
-        end_date=day.isoformat(),
-    )
-
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -77,15 +67,13 @@ def main(argv: list[str] | None = None) -> int:
         day = date.fromisoformat(args.day)
     except ValueError:
         ap.error(f"day must be YYYY-MM-DD, got {args.day!r}")
-    out = XRS_ARCHIVE_DIR
-
-    if not args.rerun and not args.dry_run and download_day(out, day) != 0:
+    if not args.rerun and not args.dry_run and download_cdr_day(day) != 0:
         print(f"{day}: failed (nothing downloaded or inserted).", file=sys.stderr)
         return 1
 
-    files = day_files(out, day)
+    files = day_files(day)
     if not files:
-        print(f"No xrscdr*.dat files for {day} under {out / 'data'}"
+        print(f"No xrscdr*.dat files for {day} under {'data'}"
               + (" (use --rerun only when the files are already on disk)"
                  if args.rerun or args.dry_run else ""), file=sys.stderr)
         return 2

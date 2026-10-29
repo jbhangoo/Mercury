@@ -39,7 +39,7 @@ HERE = Path(__file__).resolve().parent
 
 if __package__:
     from .database_consts import XRS_ARCHIVE_DIR
-    from .pds2db.pds_downloader import download_products
+    from .pds2db.pds_downloader import download_rdr_day
     from .pds2db.pds_consts import (
         FOOTPRINT_APPLIED,
         FOOTPRINT_MATCHED_BY_TIME,
@@ -49,7 +49,7 @@ if __package__:
     )
 else:
     from database.database_consts import XRS_ARCHIVE_DIR
-    from database.pds2db.pds_downloader import download_products
+    from database.pds2db.pds_downloader import download_rdr_day
     from database.pds2db.pds_consts import (
         FOOTPRINT_APPLIED,
         FOOTPRINT_MATCHED_BY_TIME,
@@ -78,49 +78,11 @@ def find_xml_label(csv_path: Path) -> Path | None:
     return None
 
 
-def day_files(out: Path, day: date) -> list[Path]:
-    """
-    Finds all xrs_fp_*.csv footprint files for a given date across all subdirectories.
-    Handles YYYY/MM/DD/HH, YYYY/M/D/H, or flat date folder structures.
-    """
-    # Start looking from <out>/footprints if it exists, otherwise fallback to <out>
-
-    if not out.is_dir():
-        print(f"Error: {out} is not a directory.", file=sys.stderr)
-        return []
-    elif (out / "footprints").is_dir():
-        search_base = out / "footprints"
-    else:
-        search_base = out
-
-    # Format variations to catch zero-padded and non-zero-padded paths
-    date_patterns = [
-        f"{day:%Y}/{day:%m}/{day:%d}",  # YYYY/MM/DD
-        f"{day.year}/{day.month}/{day.day}"  # YYYY/M/D
-    ]
-
-    csv_files = []
-    
-    # Find all CSV files matching xrs_fp_*.csv
-    filepath = search_base.rglob("xrs_fp_*.csv")
-    for csv_path in filepath:
-        # Convert path to posix format for uniform slash matching
-        posix_path = csv_path.as_posix()
-        
-        # Ensure the file path contains the target date structure
-        if any(pattern in posix_path for pattern in date_patterns):
-            csv_files.append(csv_path)
-
-    return sorted(csv_files)
-
-def download_day(out: Path, day: date) -> int:
-    return download_products(
-        "rdr",
-        out=out,
-        start_date=day.isoformat(),
-        end_date=day.isoformat(),
-    )
-
+def day_files(day: date) -> list[Path]:
+    """Find all footprint CSV files for a date under its fixed archive directory."""
+    search_base = XRS_ARCHIVE_DIR / "footprints"
+    day_dir = search_base / f"{day:%Y}" / f"{day:%m}" / f"{day:%d}"
+    return sorted(day_dir.rglob("xrs_fp_*.csv")) if day_dir.is_dir() else []
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -144,15 +106,13 @@ def main(argv: list[str] | None = None) -> int:
     except ValueError:
         ap.error(f"day must be YYYY-MM-DD, got {args.day!r}")
         
-    out = XRS_ARCHIVE_DIR
-
-    if not args.rerun and not args.dry_run and download_day(out, day) != 0:
+    if not args.rerun and not args.dry_run and download_rdr_day(day) != 0:
         print(f"{day}: failed (nothing downloaded and no records updated).", file=sys.stderr)
         return 1
 
-    csv_files = day_files(out, day)
+    csv_files = day_files(day)
     if not csv_files:
-        print(f"No xrs_fp_*.csv files for {day} under {out / 'footprints'}"
+        print(f"No xrs_fp_*.csv files for {day} under {XRS_ARCHIVE_DIR / 'footprints'}"
               + (" (use --rerun only when the files are already on disk)"
                  if args.rerun or args.dry_run else ""), file=sys.stderr)
         return 2
@@ -244,11 +204,10 @@ def report(day: date, file_count: int, results: list, failures: list) -> int:
         ))
     by_time = [r for r in results if r.status & FOOTPRINT_MATCHED_BY_TIME]
     if by_time:
-        met_offsets = sorted({r.met_offset for r in by_time})
-        relation = (f"always {met_offsets[0]:+d}" if len(met_offsets) == 1 else
-                    f"{len(met_offsets)} different values, from {met_offsets[0]:+d} to {met_offsets[-1]:+d}")
-        print(f"  {len(by_time)} matched by start time because the CDR row had a different MET; "
-              f"CDR MET minus footprint MET: {relation}")
+        met_offsets = [r.met_offset if r.met_offset is not None else 0 for r in by_time]
+        print(f" {len(by_time)} results were matched by start time because actual CDR METs "
+              "differed from what was expected as calculated from the RDR METs:\n"
+              f"actual CDR MET-RDR calculated MET = {met_offsets} in seconds")
     offsets = [abs(r.offset_seconds) for r in results if r.offset_seconds is not None]
     if offsets:
         print(f"  CDR start time vs footprint label start: median {median(offsets):.1f} s, "

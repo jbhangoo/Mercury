@@ -37,11 +37,19 @@ FOOTPRINT_APPLIED = FOOTPRINT_UPDATED | FOOTPRINT_UNCHANGED
 FOOTPRINT_UNMATCHED = 0x01
 FOOTPRINT_NO_BORESIGHT = 0x02
 FOOTPRINT_BORESIGHT_OUTSIDE = 0x04
+# The CDR counts MET on continuously from launch, but footprint files use the spacecraft clock within its
+# partition, which restarts at 0 when the 28-bit clock rolls over (partition 2 begins in January 2013). On
+# 2013-04-11 every footprint's MET was exactly 2**28 = 268,435,456 s below the MET of its CDR row, so for
+# clock partition p:   CDR MET = footprint MET + (p - 1) * MET_PARTITION_STRIDE
+# (partition 1 has no offset; that case and any partition beyond 2 are inferred, not yet seen in data).
+MET_PARTITION_STRIDE = 2 ** 28
+
 FOOTPRINT_AMBIGUOUS = 0x08   # multiple nearby CDR rows with no unique exact-MET match
 FOOTPRINT_PROBLEM = FOOTPRINT_UNMATCHED | FOOTPRINT_NO_BORESIGHT | FOOTPRINT_BORESIGHT_OUTSIDE | FOOTPRINT_AMBIGUOUS
 
 # Informational flag, combined with an outcome above: a unique CDR row was matched by start time
-# and its MET differs from the footprint's MET (see rdr_updater).
+# but its MET is not the one expected from the footprint (footprint MET translated for its clock
+# partition). It should be rare; a day full of these means the MET relation has changed (see rdr_updater).
 FOOTPRINT_MATCHED_BY_TIME = 0x20
 
 {

@@ -31,7 +31,7 @@ from server.app.db.access import (
 
 from .pds_consts import FOOTPRINT_APPLIED, FOOTPRINT_UPDATED
 from .pds_consts import FOOTPRINT_UNCHANGED, FOOTPRINT_UNMATCHED, FOOTPRINT_NO_BORESIGHT, FOOTPRINT_BORESIGHT_OUTSIDE
-from .pds_consts import FOOTPRINT_AMBIGUOUS, FOOTPRINT_MATCHED_BY_TIME
+from .pds_consts import FOOTPRINT_AMBIGUOUS, FOOTPRINT_MATCHED_BY_TIME, MET_PARTITION_STRIDE
 from .rdr_parser import footprint_radius
 from .rdr_reader import RDRReader
 
@@ -46,7 +46,7 @@ class FootprintUpdate:
     radius_km: float | None = None       # the radius measured (None if it could not be)
     offset_seconds: float | None = None  # CDR row start minus footprint label start
     note: str | None = None              # extra explanation, e.g. which CDR rows are near an unmatched footprint
-    met_offset: int | None = None        # CDR row MET minus footprint MET (0 when they agree)
+    met_offset: int | None = None        # CDR row MET minus the MET expected from the footprint (0 normally)
     row_id: int | None = None            # the xrs row the footprint was matched to, if any
 
     @property
@@ -59,7 +59,7 @@ class FootprintUpdate:
 
     @property
     def summary(self) -> str:
-        by_time = (f" (matched by start time; the CDR row's MET is {self.met_offset:+d} from the footprint's)"
+        by_time = (f" (matched by start time; the CDR row's MET is {self.met_offset:+d} from the expected MET)"
                    if self.matched_by_time else "")
         if self.status & FOOTPRINT_UPDATED:
             return f"radius {self.radius_km:.1f} km stored{by_time}"
@@ -77,6 +77,16 @@ class FootprintUpdate:
         return "UNRECOGNIZED RESULT!"
 
 
+def cdr_met_for(footprint) -> int:
+    """
+    Given a footprint, return the MET its CDR row is expected to have. These are not identical.
+    The footprint MET restarts at 0 whenever its 28-bit counter rolls over, so you have to
+    check which clock partition the footprint was in (how many times it has rolled over).
+    The CDR MET counts continuously from launch.
+    """
+    return footprint.met + (footprint.partition - 1) * MET_PARTITION_STRIDE
+
+
 def describe_nearby(footprint, nearby) -> str:
     """Says why a footprint found no CDR row, from the rows nearest to it in time."""
     start = footprint.start_time
@@ -84,7 +94,8 @@ def describe_nearby(footprint, nearby) -> str:
         return (f"the table has no CDR rows within a day of {start:%Y-%m-%d %H:%M:%S} UTC; "
                 f"is that day's CDR file loaded?")
     near = ", ".join(f"MET {r['met']} ({(r['observed_start'] - start).total_seconds():+.0f} s)" for r in nearby)
-    return f"the footprint's MET is {footprint.met}; the nearest CDR rows by time are {near}"
+    return (f"the footprint's MET {footprint.met} in clock partition {footprint.partition} should be CDR MET "
+            f"{cdr_met_for(footprint)}; the nearest CDR rows by time are {near}")
 
 
 class RDRUpdater:
@@ -113,8 +124,9 @@ class RDRUpdater:
         name = csv_path.name.lower()
 
         with self.engine.begin() as connection:
+            expected_cdr_met = cdr_met_for(footprint)
             candidates = db_xrs_find_for_footprint_by_time(connection, footprint.start_time)
-            met_matches = [candidate for candidate in candidates if candidate["met"] == footprint.met]
+            met_matches = [candidate for candidate in candidates if candidate["met"] == expected_cdr_met]
             flags = 0
             if len(met_matches) == 1:
                 row = met_matches[0]
@@ -123,11 +135,11 @@ class RDRUpdater:
                 return FootprintUpdate(
                     name,
                     FOOTPRINT_AMBIGUOUS,
-                    note=f"{near} (footprint MET {footprint.met})",
+                    note=f"{near} (footprint MET {footprint.met}, expected CDR MET {expected_cdr_met})",
                 )
             elif candidates:
                 row = candidates[0]
-                if row["met"] != footprint.met:
+                if row["met"] != expected_cdr_met:
                     flags = FOOTPRINT_MATCHED_BY_TIME
             else:
                 row = None
@@ -135,7 +147,7 @@ class RDRUpdater:
                 nearby = db_xrs_nearest_by_time(connection, footprint.start_time)
                 return FootprintUpdate(name, FOOTPRINT_UNMATCHED, note=describe_nearby(footprint, nearby))
             offset = (row["observed_start"] - footprint.start_time).total_seconds()
-            met_offset = row["met"] - footprint.met
+            met_offset = row["met"] - expected_cdr_met
             if row["boresight_lat"] is None:
                 return FootprintUpdate(name, FOOTPRINT_NO_BORESIGHT | flags, offset_seconds=offset,
                                        met_offset=met_offset, row_id=row["id"])

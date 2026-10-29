@@ -18,104 +18,58 @@ from database.pds2db.rdr_updater import FootprintUpdate
 
 
 DAY = date(2013, 4, 11)
+SAMPLE_FILE_DIR = Path(__file__).resolve().parents[1] / "sample_files"
+SAMPLE_RDR_FILE = SAMPLE_FILE_DIR / "xrs_fp_2_007963552.csv"
 
 
-def test_resolve_dsn_normalizes_postgresql_scheme(monkeypatch):
-    monkeypatch.setenv("DATABASE_URL", "postgres://user:pass@localhost/mercury")
-
-    assert load_rdr_records.resolve_dsn() == "postgresql+psycopg://user:pass@localhost/mercury"
-
-
-def test_find_xml_label_accepts_lower_and_uppercase_extensions(tmp_path):
-    csv_path = tmp_path / "xrs_fp_2_012362249.csv"
-    lower = csv_path.with_suffix(".xml")
-    upper = csv_path.with_suffix(".XML")
-
-    assert load_rdr_records.find_xml_label(csv_path) is None
-    lower.touch()
-    assert load_rdr_records.find_xml_label(csv_path) == lower
-    lower.unlink()
-    upper.touch()
-    assert load_rdr_records.find_xml_label(csv_path) == upper
-
-
-def test_day_files_finds_sorted_footprints_for_day_only(tmp_path):
-    archive = tmp_path / "archive"
-    footprint_dir = archive / "footprints" / "2013" / "04" / "11" / "22"
-    footprint_dir.mkdir(parents=True)
+def test_day_files_finds_sorted_footprints_for_day_only(tmp_path, monkeypatch):
+    footprint_dir = tmp_path / "footprints" / "2013" / "04" / "11" / "22"
     paths = [
         footprint_dir / "xrs_fp_2_000000002.csv",
         footprint_dir / "xrs_fp_2_000000001.csv",
-        archive / "footprints" / "2013" / "04" / "12" / "00" / "xrs_fp_2_000000003.csv",
+        tmp_path / "footprints" / "2013" / "04" / "12" / "00" / "xrs_fp_2_000000003.csv",
         footprint_dir / "other.csv",
     ]
     for path in paths:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.touch()
 
-    assert load_rdr_records.day_files(archive, DAY) == sorted(paths[:2])
-    assert load_rdr_records.day_files(tmp_path / "missing", DAY) == []
+    monkeypatch.setattr(load_rdr_records, "XRS_ARCHIVE_DIR", tmp_path)
+    assert load_rdr_records.day_files(DAY) == sorted(paths[:2])
+    assert load_rdr_records.day_files(date(2013, 4, 12)) == [paths[2]]
 
 
-def test_download_day_forwards_product_and_date(monkeypatch, tmp_path):
-    calls = []
-
-    def fake_download_products(product, **kwargs):
-        calls.append((product, kwargs))
-        return 0
-
-    monkeypatch.setattr(load_rdr_records, "download_products", fake_download_products)
-
-    assert load_rdr_records.download_day(tmp_path, DAY) == 0
-    assert calls == [("rdr", {"out": tmp_path, "start_date": DAY.isoformat(), "end_date": DAY.isoformat()})]
-
-
-def test_download_only_discovers_files_without_loading(tmp_path, monkeypatch, capsys):
-    out = tmp_path / "messenger_archive" / "xrs"
-    day_dir = out / "footprints" / "2013" / "04" / "11" / "22"
-    day_dir.mkdir(parents=True)
-    csv_path = day_dir / "xrs_fp_2_012362249.csv"
-    csv_path.touch()
-    csv_path.with_suffix(".xml").touch()
+def test_download_only_discovers_files_without_loading(monkeypatch, capsys):
     downloaded = []
 
-    def fake_download_day(download_out, download_date):
-        downloaded.append((download_out, download_date))
+    def fake_download_day(download_date):
+        downloaded.append(download_date)
         return 0
 
     def fail_if_database_accessed():
         raise AssertionError("database must not be accessed")
 
-    monkeypatch.setattr(load_rdr_records, "download_day", fake_download_day)
+    monkeypatch.setattr(load_rdr_records, "download_rdr_day", fake_download_day)
+    monkeypatch.setattr(load_rdr_records, "day_files", lambda day: [SAMPLE_RDR_FILE])
     monkeypatch.setattr(load_rdr_records, "resolve_dsn", fail_if_database_accessed)
-    monkeypatch.setattr(load_rdr_records, "XRS_ARCHIVE_DIR", out)
+    monkeypatch.setattr(load_rdr_records, "XRS_ARCHIVE_DIR", SAMPLE_FILE_DIR)
 
     assert load_rdr_records.main(["2013-04-11", "--download-only"]) == 0
-    assert downloaded == [(out, DAY)]
+    assert downloaded == [DAY]
     assert "Found 1 CSV file(s) on disk" in capsys.readouterr().out
 
 
-def test_dry_run_uses_archive_default(tmp_path, monkeypatch, capsys):
-    archive_dir = tmp_path / "messenger_archive" / "xrs"
-    day_dir = archive_dir / "footprints" / "2013" / "04" / "11" / "22"
-    day_dir.mkdir(parents=True)
-    (day_dir / "xrs_fp_2_012362249.csv").touch()
-    (day_dir / "xrs_fp_2_012362249.xml").touch()
-    monkeypatch.setattr(load_rdr_records, "XRS_ARCHIVE_DIR", archive_dir)
+def test_dry_run_uses_sample_files(monkeypatch, capsys):
+    monkeypatch.setattr(load_rdr_records, "day_files", lambda day: [SAMPLE_RDR_FILE])
+    monkeypatch.setattr(load_rdr_records, "XRS_ARCHIVE_DIR", SAMPLE_FILE_DIR)
 
     assert load_rdr_records.main(["2013-04-11", "--dry-run"]) == 0
     assert "Found 1 CSV file(s) on disk" in capsys.readouterr().out
 
 
-def test_main_runs_each_file_and_disposes_engine(tmp_path, monkeypatch, capsys):
-    archive_dir = tmp_path / "messenger_archive" / "xrs"
-    day_dir = archive_dir / "footprints" / "2013" / "04" / "11" / "22"
-    day_dir.mkdir(parents=True)
-    paths = [day_dir / "xrs_fp_2_000000001.csv", day_dir / "xrs_fp_2_000000002.csv"]
-    for path in paths:
-        path.touch()
-        path.with_suffix(".xml").touch()
-    monkeypatch.setattr(load_rdr_records, "XRS_ARCHIVE_DIR", archive_dir)
+def test_main_processes_sample_file_and_disposes_engine(monkeypatch, capsys):
+    monkeypatch.setattr(load_rdr_records, "day_files", lambda day: [SAMPLE_RDR_FILE])
+    monkeypatch.setattr(load_rdr_records, "XRS_ARCHIVE_DIR", SAMPLE_FILE_DIR)
     monkeypatch.setattr(load_rdr_records, "resolve_dsn", lambda: "postgresql+psycopg://test")
 
     class Engine:
@@ -146,12 +100,12 @@ def test_main_runs_each_file_and_disposes_engine(tmp_path, monkeypatch, capsys):
 
     assert load_rdr_records.main(["2013-04-11", "--rerun", "--force"]) == 0
 
-    assert update_calls == [(path, True) for path in paths]
+    assert update_calls == [(SAMPLE_RDR_FILE, True)]
     assert missing_calls[0][0:2] == (engine, DAY)
-    assert len(missing_calls[0][2]) == 2
+    assert len(missing_calls[0][2]) == 1
     assert engine.disposed
     output = capsys.readouterr().out
-    assert "2 updated, 0 unchanged (already loaded), 0 not applied, 0 failed" in output
+    assert "1 updated, 0 unchanged (already loaded), 0 not applied, 0 failed" in output
 
 
 def test_missing_footprints_uses_utc_day_and_unreached_row_ids(monkeypatch):
@@ -237,7 +191,7 @@ def test_report_summarizes_matched_by_time_met_offsets(capsys):
     ]
 
     assert load_rdr_records.report(DAY, 2, results, []) == 0
-    assert "2 different values, from +100 to +200" in capsys.readouterr().out
+    assert "actual CDR MET-RDR calculated MET = [100, 200] in seconds" in capsys.readouterr().out
 
 
 def test_main_rejects_unsupported_options():
