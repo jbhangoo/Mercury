@@ -29,27 +29,32 @@ This was built using uv, Docker and uvicorn in development
 - Create `mercury` database
 - Create PostGIS extension in database
 
-### Load with initial data
+### Load monthly CDR and RDR records
 
-From the repository root, load XRS calibrated data for a day with:
+From the repository root, use `database/pds_bulk_load_month.py` to load a
+month. Set `DATABASE_URL` in the environment, the repository `.env`, or
+`server/.env` for the database connection. For example, to load April 2013:
 
-    python -m database.load_cds_records 2013-04-14
+    python database/pds_bulk_load_month.py 2013 04 cdr
 
-The command downloads that day's CDR files to `messenger_archive/xrs` by default,
-then loads them into the `xrs` table. Set `DATABASE_URL` in the environment,
-the repository `.env`, or `server/.env` for the database connection. To load
-files already on disk without downloading them again, add `--rerun`. The
-downloader is an internal part of this command, so the normal workflow always
-downloads selected files before loading them. Files are always stored under
-`messenger_archive/xrs`.
+Check that the CDR command completes successfully before loading footprints.
+It processes each day and returns a nonzero exit status if any day fails. If
+any days fail, run the same command again; successful daily loads are safe to
+repeat.
 
-To apply downloaded RDR footprint files to the loaded CDR rows, run:
+After the CDR month has loaded successfully, load the same month of RDR
+footprints:
 
-    python -m database.load_rdr_records 2013-04-11 --rerun
+    python database/pds_bulk_load_month.py 2013 04 rdr
 
-Footprints are matched to CDR observations by start time within two seconds.
-If multiple rows are in that window, an exact MET match disambiguates them;
-otherwise the footprint is reported as ambiguous.
+RDR footprints are applied to already-loaded CDR rows and matched to
+observations by start time within two seconds. If multiple rows are in that
+window, an exact MET match disambiguates them; otherwise the footprint is
+reported as ambiguous. If any RDR days fail, run that same RDR command again.
+
+The loader supports years 2011–2016 and months 1–12; the month may be written
+with or without a leading zero. Add `--rerun` when you want to process files
+already on disk without downloading them again.
 
 The `/api/xrs` endpoint can return spatial results after footprint radii have
 been loaded into `xrs.footprint_radius_km`.
