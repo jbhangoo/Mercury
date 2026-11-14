@@ -1,3 +1,7 @@
+"""
+Serve tiles from Mercury Trek
+Proxy them through this server to avoid CORS issues.
+"""
 import httpx
 from fastapi import APIRouter, HTTPException, Query, Request, Response
 

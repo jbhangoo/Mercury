@@ -7,6 +7,8 @@ boundary values, special characters, and the shape of the response built from da
 from get_data import get_data
 from datetime import datetime, timezone
 
+import pytest
+
 from conftest import EmptyEngine
 
 
@@ -42,76 +44,79 @@ def test_xrs_route(client):
     # Examine the response for a specific lat/lon to ensure it returns the expected structure.
     data = get_data(client, "/api/xrs?lon=83.25&lat=-74.875&radius_km=150", 200)
     assert data["lon"] == 83.25 and data["lat"] == -74.875 and data["radius_km"] == 150
-    assert data["observations"] == []
-    assert data["has_more"] is False
-    assert "aggregatedValue" not in data
-    assert "solarIntensity" not in data
-    assert "composition" not in data
+    assert data["observation_count"] == 0
+    assert data["spectra"] == {
+        "gpc1_mg_spectrum": None,
+        "gpc2_al_spectrum": None,
+        "gpc3_un_spectrum": None,
+        "solar_mon_spectrum": None,
+    }
 
 
 def observation_row(**overrides):
+    """A row as the list query returns it (see LIST_COLUMNS, plus distance_km and weight)."""
     row = {
         "id": 7,
-        "source_file": "xrscdr2013101.dat",
-        "met": 123456,
-        "orbit_number": 25,
         "observed_start": datetime(2013, 4, 11, 0, tzinfo=timezone.utc),
-        "observed_end": datetime(2013, 4, 11, 0, 5, tzinfo=timezone.utc),
-        "fov_status": 1,
-        "intersection": True,
-        "data_quality": 0,
         "boresight_lon": -80.5,
         "boresight_lat": 30,
         "footprint_radius_km": 303.4,
-        "spacecraft_altitude_km": 400,
-        "solar_flare_detected": True,
-        "solar_monitor_rate": None,
-        "solar_monitor_spect_shift": None,
         "solar_intensity": None,
-        "solar_intensity_source": None,
-        "gpc1_mg_spectrum": [1, 2],
-        "gpc2_al_spectrum": [3, 4],
-        "gpc3_un_spectrum": [5, 6],
-        "solar_mon_spectrum": [7, 8],
-        "housekeeping": {},
+        "gpc1_mg_spectrum": None,
+        "gpc2_al_spectrum": None,
+        "gpc3_un_spectrum": None,
+        "solar_mon_spectrum": None,
         "distance_km": 12.5,
         "weight": 0.9966,
     }
     return {**row, **overrides}
 
 
-def test_xrs_route_returns_database_observations_as_utc(client):
-    client.app.state.db_engine = EmptyEngine([observation_row()])
+def test_xrs_route_returns_weighted_spectra_for_all_matching_observations(client):
+    client.app.state.db_engine = EmptyEngine([
+        observation_row(
+            id=7,
+            gpc1_mg_spectrum=[10, 20, 30],
+            gpc2_al_spectrum=[4, 8],
+            weight=1.0,
+        ),
+        observation_row(
+            id=8,
+            gpc1_mg_spectrum=[20, 40, 60],
+            gpc2_al_spectrum=[8],
+            gpc3_un_spectrum=[None, 5],
+            solar_mon_spectrum=[1, 3],
+            weight=0.5,
+        ),
+    ])
 
     data = get_data(client, "/api/xrs?lon=-80.5&lat=30", 200)
 
-    observation = data["observations"][0]
-    assert observation["met"] == 123456
-    assert observation["observed_start"] == "2013-04-11T00:00:00+00:00"
-    assert observation["gpc1_mg_spectrum"] == [1, 2]
-    assert (observation["boresight_lat"], observation["boresight_lon"]) == (30, -80.5)
-    assert (observation["footprint_radius_km"], observation["distance_km"], observation["weight"]) == (303.4, 12.5, 0.9966)
+    assert data["observation_count"] == 2
+    assert data["spectra"]["gpc1_mg_spectrum"] == pytest.approx([20 / 1.5, 40 / 1.5, 60 / 1.5])
+    assert data["spectra"]["gpc2_al_spectrum"] == pytest.approx([8 / 1.5, 8])
+    assert data["spectra"]["gpc3_un_spectrum"] == [None, 5]
+    assert data["spectra"]["solar_mon_spectrum"] == [1, 3]
     assert client.app.state.db_engine.last_query_parameters == {
         "lon": -80.5,
         "lat": 30.0,
         "roi_radius_km": 0.0,
-        "limit": 101,
     }
 
 
-def test_xrs_route_passes_the_circle_radius_and_limit_to_the_search(client):
+def test_xrs_route_passes_the_circle_radius_and_does_not_limit_search_results(client):
     client.app.state.db_engine = EmptyEngine([])
-    get_data(client, "/api/xrs?lon=10&lat=-20&radius_km=250.5&limit=25", 200)
+    get_data(client, "/api/xrs?lon=10&lat=-20&radius_km=250.5", 200)
     assert client.app.state.db_engine.last_query_parameters == {
-        "lon": 10.0, "lat": -20.0, "roi_radius_km": 250.5, "limit": 26,
+        "lon": 10.0, "lat": -20.0, "roi_radius_km": 250.5,
     }
 
 
-def test_xrs_route_reports_when_more_observations_exist(client):
-    rows = [observation_row(id=i, met=i) for i in range(3)]
+def test_xrs_route_summarizes_every_matching_observation(client):
+    rows = [observation_row(id=i) for i in range(3)]
     client.app.state.db_engine = EmptyEngine(rows)
-    data = get_data(client, "/api/xrs?lon=0&lat=0&limit=2", 200)
-    assert [o["id"] for o in data["observations"]] == [0, 1] and data["has_more"] is True
+    data = get_data(client, "/api/xrs?lon=0&lat=0", 200)
+    assert data["observation_count"] == 3
 
 
 def test_xrs_route_bad_lat_lon(client):
@@ -133,10 +138,8 @@ def test_xrs_route_bad_lat_lon(client):
     get_data(client, "/api/xrs?lat=nan&lon=0", 422)
 
 
-def test_xrs_route_bad_radius_or_limit(client):
+def test_xrs_route_bad_radius(client):
     get_data(client, "/api/xrs?lat=0&lon=0&radius_km=-1", 422)
     get_data(client, "/api/xrs?lat=0&lon=0&radius_km=2500.1", 422)
     get_data(client, "/api/xrs?lat=0&lon=0&radius_km=abc", 422)
     get_data(client, "/api/xrs?lat=0&lon=0&radius_km=inf", 422)
-    get_data(client, "/api/xrs?lat=0&lon=0&limit=0", 422)
-    get_data(client, "/api/xrs?lat=0&lon=0&limit=501", 422)

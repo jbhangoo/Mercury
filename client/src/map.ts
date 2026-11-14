@@ -13,7 +13,9 @@ import type { DeckPickingInfo } from './types.ts';
  * own backend (see tile.py) to sidestep Trek's missing CORS headers and
  * to translate deck.gl's own tile grid into real Trek tiles by geography.
  */
-export function buildMapLayer(): TileLayer<any> {
+export function buildMapLayer(
+    onClick: (info: DeckPickingInfo<unknown>) => void = (info) => { void handleSurfaceClick(info); }
+): TileLayer<any> {
     return new TileLayer({
         id: 'mercury-map',
         modelMatrix: FLIP_Y_MATRIX,
@@ -45,6 +47,6 @@ export function buildMapLayer(): TileLayer<any> {
             });
         },
 
-        onClick: (info: DeckPickingInfo<unknown>) => { void handleSurfaceClick(info); }
+        onClick
     });
 }

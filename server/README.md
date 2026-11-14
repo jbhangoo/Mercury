@@ -94,9 +94,12 @@ latitude/longitude coordinates to `/api/xrs`. The endpoint returns
 observations whose boresight and loaded `footprint_radius_km` cover the
 requested location on Mercury. Records without a boresight or footprint radius
 are not spatially matched.
-The response contains an `observations` array of database-backed CDR fields
-and spectra, plus `has_more`; `limit` defaults to 100 and can be set from 1
-to 500. If no observation coverage circles include a point, the array is empty.
+The response contains the number of matching observations and weighted-average
+spectra for the four detector channels. Every overlapping observation is
+included; each channel's average is weighted by the observation's spatial
+weight, and observations missing a channel do not contribute to that channel.
+If no observation coverage circles include a point, the count is zero and each
+spectrum is `null`.
 
 ## Plan Idea
 

@@ -79,6 +79,14 @@ SPECTRUM_COLUMNS = (
     xrs.c.solar_mon_spectrum,
 )
 
+# Columns required by the overlap query in addition to the spectra being aggregated.
+SPECTRUM_SEARCH_COLUMNS = (
+    xrs.c.id,
+    xrs.c.observed_start,
+    xrs.c.footprint_radius_km,
+    *SPECTRUM_COLUMNS,
+)
+
 # Light projection for lists and map popups (no spectra, no housekeeping).
 SUMMARY_COLUMNS = (
     xrs.c.id,
@@ -98,6 +106,17 @@ SUMMARY_COLUMNS = (
     xrs.c.solar_monitor_rate,
     xrs.c.solar_intensity,
     xrs.c.solar_intensity_source,
+)
+
+# What the point query returns for each hit: enough to list it in the sidebar and to ask for its
+# full record (spectra) later by id. Observation time is the start of the integration interval.
+LIST_COLUMNS = (
+    xrs.c.id,
+    xrs.c.observed_start,
+    xrs.c.boresight_lat,
+    xrs.c.boresight_lon,
+    xrs.c.footprint_radius_km,
+    xrs.c.solar_intensity,
 )
 
 # Full record for a single observation: the summary plus spectra and housekeeping.

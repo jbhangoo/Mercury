@@ -37,6 +37,7 @@ FOOTPRINT_APPLIED = FOOTPRINT_UPDATED | FOOTPRINT_UNCHANGED
 FOOTPRINT_UNMATCHED = 0x01
 FOOTPRINT_NO_BORESIGHT = 0x02
 FOOTPRINT_BORESIGHT_OUTSIDE = 0x04
+
 # The CDR counts MET on continuously from launch, but footprint files use the spacecraft clock within its
 # partition, which restarts at 0 when the 28-bit clock rolls over (partition 2 begins in January 2013). On
 # 2013-04-11 every footprint's MET was exactly 2**28 = 268,435,456 s below the MET of its CDR row, so for
@@ -52,7 +53,7 @@ FOOTPRINT_PROBLEM = FOOTPRINT_UNMATCHED | FOOTPRINT_NO_BORESIGHT | FOOTPRINT_BOR
 # partition). It should be rare; a day full of these means the MET relation has changed (see rdr_updater).
 FOOTPRINT_MATCHED_BY_TIME = 0x20
 
-{
+BORESIGHT_FAILURES = {
     FOOTPRINT_UNMATCHED: "no CDR row with this MET and start time",
     FOOTPRINT_NO_BORESIGHT: "the CDR row has no boresight point (it missed the planet)",
     FOOTPRINT_BORESIGHT_OUTSIDE: "the boresight point is not inside the footprint",
@@ -61,4 +62,4 @@ FOOTPRINT_MATCHED_BY_TIME = 0x20
 
 # DATA_QUALITY_BITS
 DQ_LENGTH_MISMATCH_PROBLEM = 1 << 0
-FOOTPRINT_STATUS = {DQ_LENGTH_MISMATCH_PROBLEM: "data quality length mismatch",}
+FOOTPRINT_STATUS = {DQ_LENGTH_MISMATCH_PROBLEM: "data quality problem: length mismatch",}

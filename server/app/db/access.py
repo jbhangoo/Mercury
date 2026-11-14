@@ -174,35 +174,44 @@ def great_circle_distance_km(lat_column, lon_column, lat, lon):
     return MERCURY_RADIUS_KM * func.acos(func.least(1.0, func.greatest(-1.0, cosine)))
 
 
-def near_observations_statement():
+def near_observations_statement(columns=DETAIL_COLUMNS, limit: int | None = None):
     """Valid observations overlapping a circle of interest, strongest weight first.
 
-    Bind parameters: lon, lat (center, degrees), roi_radius_km (>= 0) and limit."""
+    `columns` are the xrs columns to return (distance_km and weight are always added).
+    Bind parameters: lon, lat (center, degrees), roi_radius_km (>= 0), and optionally limit."""
     distance = great_circle_distance_km(
         xrs.c.boresight_lat, xrs.c.boresight_lon, bindparam("lat"), bindparam("lon")
     ).label("distance_km")
-    candidates = select(*DETAIL_COLUMNS, distance).where(VALID_FOR_SEARCH).subquery("candidates")
+    candidates = select(*columns, distance).where(VALID_FOR_SEARCH).subquery("candidates")
     sigma = WEIGHT_SIGMA_FRACTION * candidates.c.footprint_radius_km
     weight = func.exp(-(candidates.c.distance_km * candidates.c.distance_km) / (2.0 * sigma * sigma)).label("weight")
-    return (
+    statement = (
         select(candidates, weight)
         .where(candidates.c.distance_km <= candidates.c.footprint_radius_km + bindparam("roi_radius_km"))
         .order_by(weight.desc(), candidates.c.observed_start.desc(), candidates.c.id.desc())
-        .limit(bindparam("limit"))
     )
+    return statement.limit(bindparam("limit")) if limit is not None else statement
 
 
 def find_xrs_observations_near(
-    engine: Engine, lon: float, lat: float, radius_km: float, limit: int
+    engine: Engine,
+    lon: float,
+    lat: float,
+    radius_km: float,
+    limit: int | None = None,
+    columns=DETAIL_COLUMNS,
 ) -> list[RowMapping]:
     """Valid XRS observations overlapping the circle of interest (lon, lat, radius_km).
 
     Each row has the observation's columns plus distance_km (from its boresight point to the
     center of the circle) and weight (see the module docstring). Rows come back in descending
-    weight, so a limit keeps the observations that matter most."""
+    weight. If supplied, `limit` keeps only the observations that matter most."""
     with engine.connect() as connection:
+        parameters: dict[str, float | int] = {"lon": lon, "lat": lat, "roi_radius_km": radius_km}
+        if limit is not None:
+            parameters["limit"] = limit
         result = connection.execute(
-            near_observations_statement(),
-            {"lon": lon, "lat": lat, "roi_radius_km": radius_km, "limit": limit},
+            near_observations_statement(columns, limit),
+            parameters,
         ).mappings()
         return result.all()

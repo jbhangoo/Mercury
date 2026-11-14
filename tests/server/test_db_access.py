@@ -18,6 +18,7 @@ from app.db.access import (
     get_max_xrs_search_radius_km,
     find_xrs_observations_near, near_observations_statement,
 )
+from app.db.schema import LIST_COLUMNS
 
 KM_PER_DEGREE = MERCURY_RADIUS_KM * math.pi / 180
 
@@ -36,6 +37,19 @@ def test_search_passes_its_parameters_and_returns_the_rows():
     assert connection.execute.call_args.args[1] == {
         "lon": -80.5, "lat": 30, "roi_radius_km": 150, "limit": 11,
     }
+
+
+def test_list_query_selects_only_the_list_columns_and_no_spectra():
+    sql = str(near_observations_statement(LIST_COLUMNS).compile(dialect=postgresql.dialect()))
+    for name in ("boresight_lat", "boresight_lon", "footprint_radius_km", "solar_intensity", "observed_start"):
+        assert name in sql
+    for name in ("spectrum", "housekeeping", "gpc1_mg"):
+        assert name not in sql
+
+
+def test_unlimited_search_statement_has_no_limit_clause():
+    sql = str(near_observations_statement(LIST_COLUMNS).compile(dialect=postgresql.dialect()))
+    assert " LIMIT " not in sql
 
 
 # --- searching around a point (database) -------------------------------------------------------

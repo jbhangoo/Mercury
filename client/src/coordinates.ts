@@ -42,3 +42,8 @@ export function formatLongitude(lonEast: number): string {
     const hemisphere = lonEast >= 0 ? 'E' : 'W';
     return `${Math.abs(lonEast).toFixed(2)}° ${hemisphere}`;
 }
+
+export function formatLatitude(lat: number): string {
+    const hemisphere = lat >= 0 ? 'N' : 'S';
+    return `${Math.abs(lat).toFixed(2)}° ${hemisphere}`;
+}

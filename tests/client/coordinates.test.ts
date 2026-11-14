@@ -12,3 +12,12 @@ describe('coordinate conversions', () => {
         expect(formatLongitude(0)).toBe('0.00° E');
     });
 });
+
+import { formatLatitude } from '../../client/src/coordinates.ts';
+
+describe('formatLatitude', () => {
+    it('adds the hemisphere letter', () => {
+        expect(formatLatitude(30.254)).toBe('30.25° N');
+        expect(formatLatitude(-74.875)).toBe('74.88° S');
+    });
+});

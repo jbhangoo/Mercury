@@ -7,21 +7,27 @@
 
     <style>
         body { margin: 0; padding: 0; font-family: sans-serif; background-color: #0b0c10; color: #fff; }
-        #map-container { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; }
+        #map-container { position: absolute; top: 0; left: 0; bottom: 0; right: 340px; }
 
-        #detail-panel {
+        #sidebar {
             position: absolute;
-            top: 20px;
-            right: 20px;
-            width: 300px;
-            background: rgba(20, 24, 33, 0.9);
-            border: 1px solid #45424e;
-            border-radius: 8px;
-            padding: 16px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            top: 0;
+            right: 0;
+            bottom: 0;
+            width: 340px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            background: #141821;
+            border-left: 1px solid #45424e;
             z-index: 10;
         }
-        .metric-value { font-size: 1.4em; font-weight: bold; color: #64ffda; }
+        #sidebar h3 { margin: 0; padding: 16px; border-bottom: 1px solid #45424e; }
+        #panel-content { flex: 1; overflow-y: auto; padding: 0 16px 16px; }
+        .observation-list { list-style: none; margin: 0; padding: 0; }
+        .observation { padding: 10px 0; border-bottom: 1px solid #2a2f3a; font-size: 0.9em; }
+        .observation-time { font-weight: bold; color: #64ffda; margin-bottom: 2px; }
+        .label { color: #8892b0; margin-right: 4px; }
         .hint { color: #8892b0; font-size: 0.9em; }
     </style>
 </head>
@@ -29,12 +35,12 @@
 
 <div id="map-container"></div>
 
-<div id="detail-panel">
-    <h3>Point Details</h3>
+<aside id="sidebar">
+    <h3>Observations</h3>
     <div id="panel-content">
-        <p class="hint">Hover over or click a point to view details.</p>
+        <p class="hint">Click a spot on the map to list the observations that cover it.</p>
     </div>
-</div>
+</aside>
 
 <!-- Vite module entry point -->
 <script type="module" src="/src/app.ts"></script>
