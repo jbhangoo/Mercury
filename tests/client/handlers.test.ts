@@ -40,6 +40,7 @@ describe('handleSurfaceClick', () => {
             lat: 30,
             radius_km: 0,
             observation_count: 2,
+            units: 'counts per second per unit solar monitor rate',
             spectra: {
                 gpc1_mg_spectrum: [1.25, 2.5],
                 gpc2_al_spectrum: [4],
@@ -55,9 +56,9 @@ describe('handleSurfaceClick', () => {
         expect(panel.innerHTML).toContain('30.00° N, 80.50° W');
         expect(panel.innerHTML).toContain('<strong>Matching observations:</strong> 2');
         expect(panel.innerHTML).toContain('gpc1_mg_spectrum');
-        expect(panel.innerHTML).toContain('3.75 mean counts');
+        expect(panel.innerHTML).toContain('rate: 3.75 counts per second per unit solar monitor rate');
         expect(panel.innerHTML).toContain('Unavailable');
-        expect(panel.innerHTML).toContain('Spatially weighted mean spectra');
+        expect(panel.innerHTML).toContain('Spatially weighted channel rates');
     });
 
     it('explains when no observation footprint covers the selected position', async () => {
@@ -67,6 +68,7 @@ describe('handleSurfaceClick', () => {
                 lon: 10,
                 lat: 10,
                 observation_count: 0,
+                units: 'counts per second per unit solar monitor rate',
                 spectra: {
                     gpc1_mg_spectrum: null,
                     gpc2_al_spectrum: null,

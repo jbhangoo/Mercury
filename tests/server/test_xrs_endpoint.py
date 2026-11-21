@@ -54,10 +54,12 @@ def test_xrs_route(client):
 
 
 def observation_row(**overrides):
-    """A row as the list query returns it (see LIST_COLUMNS, plus distance_km and weight)."""
+    """A row from the spectrum search, including distance, weight, and exposure fields."""
     row = {
         "id": 7,
         "observed_start": datetime(2013, 4, 11, 0, tzinfo=timezone.utc),
+        "observed_end": datetime(2013, 4, 11, 0, 0, 1, tzinfo=timezone.utc),
+        "solar_monitor_rate": 1,
         "boresight_lon": -80.5,
         "boresight_lat": 30,
         "footprint_radius_km": 303.4,
@@ -117,6 +119,7 @@ def test_xrs_route_summarizes_every_matching_observation(client):
     client.app.state.db_engine = EmptyEngine(rows)
     data = get_data(client, "/api/xrs?lon=0&lat=0", 200)
     assert data["observation_count"] == 3
+    assert data["observations_used"] == 3
 
 
 def test_xrs_route_bad_lat_lon(client):

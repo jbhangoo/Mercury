@@ -1,16 +1,26 @@
 import { XRS_API_BASE } from './config.ts';
 import { formatLatitude, formatLongitude, toGeographicLatitude } from './coordinates.ts';
-import type { XrsSpectraPayload, DeckPickingInfo } from './types.ts';
+import { buildSpectrumChart, FIRST_CHANNEL } from './spectrumChart.ts';
+import type { SpectrumName, XrsSpectraPayload, DeckPickingInfo } from './types.ts';
 
-function renderSpectrumSummary(spectra: XrsSpectraPayload['spectra']): string {
-    return Object.entries(spectra).map(([name, values]) => {
-        const total = values?.reduce<number | undefined>(
-            (sum, value) => value === null ? sum : (sum ?? 0) + value,
-            undefined
-        );
-        const formattedTotal = total === undefined ? 'Unavailable' : total.toFixed(2);
-        return `<li><span class="label">${name}</span> ${formattedTotal} mean counts</li>`;
-    }).join('');
+function renderSpectra(details: XrsSpectraPayload): string {
+    const used = details.observations_used ?? details.observation_count;
+    if (used === 0) {
+        return `<p class="hint">None of the ${details.observation_count} overlapping observations has a usable `
+            + `solar monitor rate, so no spectrum can be integrated here.</p>`;
+    }
+    const charts = (Object.keys(details.spectra) as SpectrumName[]).map((name) => buildSpectrumChart({
+        label: name,
+        values: details.spectra[name] ?? [],
+        errors: details.spectra_error?.[name] ?? null,
+        firstChannel: FIRST_CHANNEL[name]
+    })).join('');
+    const units = details.units ? `<p class="hint">${details.units} (shaded: ±1 σ)</p>` : '';
+    const skipped = used < details.observation_count
+        ? `<p class="hint">${details.observation_count - used} of ${details.observation_count} observations `
+            + `had no usable solar monitor rate and are not included.</p>`
+        : '';
+    return `<p>Integrated spectra (${used} observation${used === 1 ? '' : 's'}):</p>${units}${skipped}${charts}`;
 }
 
 export function handleSurfaceHover(coordinate: number[] | undefined): string {
@@ -53,7 +63,7 @@ export async function handleSurfaceClick(info: DeckPickingInfo<unknown>): Promis
             <p><strong>Position:</strong> ${positionLabel}</p>
             <p><strong>Matching observations:</strong> ${count}</p>
             ${count
-                ? `<p>Spatially weighted mean spectra:</p><ul>${renderSpectrumSummary(details.spectra)}</ul>`
+                ? renderSpectra(details)
                 : '<p>No XRS observations have a footprint covering this position.</p>'}
         `;
     } catch (e) {

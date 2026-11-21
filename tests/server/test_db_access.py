@@ -14,7 +14,10 @@ from sqlalchemy.engine import Engine
 
 from app.db.access import (
     FOOTPRINT_TIME_TOLERANCE, MERCURY_RADIUS_KM, WEIGHT_SIGMA_FRACTION,
-    db_xrs_find_for_footprint_by_time, db_xrs_nearest_by_time, db_xrs_set_footprint,
+    NEAREST_TIME_WINDOW, XRS_FOOTPRINT_BY_TIME_SQL, XRS_FOOTPRINT_UPDATE_SQL,
+    XRS_INSERT_SQL, XRS_NEAREST_BY_TIME_SQL, XRS_ROWS_EXPECTING_FOOTPRINTS_SQL,
+    db_xrs_find_for_footprint_by_time, db_xrs_insert, db_xrs_nearest_by_time,
+    db_xrs_rows_expecting_footprints, db_xrs_set_footprint,
     get_max_xrs_search_radius_km,
     find_xrs_observations_near, near_observations_statement,
 )
@@ -50,6 +53,87 @@ def test_list_query_selects_only_the_list_columns_and_no_spectra():
 def test_unlimited_search_statement_has_no_limit_clause():
     sql = str(near_observations_statement(LIST_COLUMNS).compile(dialect=postgresql.dialect()))
     assert " LIMIT " not in sql
+
+
+def test_flare_only_search_statement_filters_non_flare_observations():
+    sql = str(near_observations_statement(LIST_COLUMNS, flare_only=True).compile(
+        dialect=postgresql.dialect()
+    ))
+    assert "xrs.solar_flare_detected IS true" in sql
+
+
+def test_insert_executes_records_inside_a_transaction():
+    engine = MagicMock(spec=Engine)
+    connection = Mock()
+    engine.begin.return_value.__enter__.return_value = connection
+    records = [{"source_file": "day.dat", "source_id": "42", "met": 42}]
+
+    db_xrs_insert(engine, records)
+
+    engine.begin.assert_called_once_with()
+    connection.execute.assert_called_once_with(XRS_INSERT_SQL, records)
+
+
+def test_footprint_time_lookup_uses_tolerance_and_returns_rows():
+    connection = Mock()
+    rows = [{"id": 1}, {"id": 2}]
+    connection.execute.return_value.mappings.return_value = rows
+    start_time = datetime(2013, 4, 2, tzinfo=timezone.utc)
+    tolerance = timedelta(milliseconds=750)
+
+    result = db_xrs_find_for_footprint_by_time(connection, start_time, tolerance)
+
+    assert result == rows
+    connection.execute.assert_called_once_with(XRS_FOOTPRINT_BY_TIME_SQL, {
+        "start_time": start_time,
+        "window_start": start_time - tolerance,
+        "window_end": start_time + tolerance,
+    })
+
+
+def test_rows_expecting_footprints_query_uses_the_requested_day():
+    connection = Mock()
+    rows = [{"id": 8, "met": 12}]
+    connection.execute.return_value.mappings.return_value = rows
+    day_start = datetime(2013, 4, 2, tzinfo=timezone.utc)
+    day_end = day_start + timedelta(days=1)
+
+    result = db_xrs_rows_expecting_footprints(connection, day_start, day_end)
+
+    assert result == rows
+    connection.execute.assert_called_once_with(XRS_ROWS_EXPECTING_FOOTPRINTS_SQL, {
+        "day_start": day_start,
+        "day_end": day_end,
+    })
+
+
+def test_nearest_by_time_query_uses_one_day_window_and_requested_count():
+    connection = Mock()
+    rows = [{"met": 42}]
+    connection.execute.return_value.mappings.return_value = rows
+    when = datetime(2013, 4, 2, tzinfo=timezone.utc)
+
+    result = db_xrs_nearest_by_time(connection, when, count=1)
+
+    assert result == rows
+    connection.execute.assert_called_once_with(XRS_NEAREST_BY_TIME_SQL, {
+        "when": when,
+        "window_start": when - NEAREST_TIME_WINDOW,
+        "window_end": when + NEAREST_TIME_WINDOW,
+        "count": 1,
+    })
+
+
+def test_set_footprint_updates_the_requested_row():
+    connection = Mock()
+
+    db_xrs_set_footprint(connection, row_id=19, partition=2, radius_km=302.94)
+
+    connection.execute.assert_called_once_with(XRS_FOOTPRINT_UPDATE_SQL, {
+        "id": 19,
+        "partition": 2,
+        "radius_km": 302.94,
+    })
 
 
 # --- searching around a point (database) -------------------------------------------------------

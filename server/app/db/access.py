@@ -21,6 +21,9 @@ distance between its boresight point and the circle center,
 so the weight is 1.0 at the boresight point and exp(-2) = 0.135 at the edge of the
 certain-coverage circle. sigma is a modelling choice, not something in the data.
 With a circle radius above zero the weight is that of the circle's center.
+
+Optionally the search can be restricted to observations flagged as taken during a solar flare
+(flare_only=True), which is the data the spectra are normally integrated from.
 """
 from __future__ import annotations
 
@@ -31,7 +34,7 @@ from sqlalchemy import and_, bindparam, func, select, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.engine import Connection, Engine, RowMapping
 
-from .schema import DETAIL_COLUMNS, xrs
+from .schema import DETAIL_COLUMNS, SPECTRUM_SEARCH_COLUMNS, xrs
 
 _MAX_XRS_SEARCH_RADIUS_KM = 2500.0
 
@@ -48,6 +51,14 @@ VALID_FOR_SEARCH = and_(
     xrs.c.boresight_lat.is_not(None),
     xrs.c.footprint_radius_km.is_not(None),
     xrs.c.data_quality.op("&")(1) == 0,
+)
+
+# Columns the exposure-normalized spectrum integration needs for each overlapping observation: the
+# spectra, the integration interval (observed_start .. observed_end) and the solar monitor rate.
+SPECTRUM_RATE_SEARCH_COLUMNS = (
+    *SPECTRUM_SEARCH_COLUMNS,
+    xrs.c.observed_end,
+    xrs.c.solar_monitor_rate,
 )
 
 # Footprint labels give whole-second start times, while CDR times have milliseconds. Only rows this
@@ -174,15 +185,17 @@ def great_circle_distance_km(lat_column, lon_column, lat, lon):
     return MERCURY_RADIUS_KM * func.acos(func.least(1.0, func.greatest(-1.0, cosine)))
 
 
-def near_observations_statement(columns=DETAIL_COLUMNS, limit: int | None = None):
+def near_observations_statement(columns=DETAIL_COLUMNS, limit: int | None = None, flare_only: bool = False):
     """Valid observations overlapping a circle of interest, strongest weight first.
 
     `columns` are the xrs columns to return (distance_km and weight are always added).
+    With `flare_only`, only observations with solar_flare_detected set are considered.
     Bind parameters: lon, lat (center, degrees), roi_radius_km (>= 0), and optionally limit."""
     distance = great_circle_distance_km(
         xrs.c.boresight_lat, xrs.c.boresight_lon, bindparam("lat"), bindparam("lon")
     ).label("distance_km")
-    candidates = select(*columns, distance).where(VALID_FOR_SEARCH).subquery("candidates")
+    valid = and_(VALID_FOR_SEARCH, xrs.c.solar_flare_detected.is_(True)) if flare_only else VALID_FOR_SEARCH
+    candidates = select(*columns, distance).where(valid).subquery("candidates")
     sigma = WEIGHT_SIGMA_FRACTION * candidates.c.footprint_radius_km
     weight = func.exp(-(candidates.c.distance_km * candidates.c.distance_km) / (2.0 * sigma * sigma)).label("weight")
     statement = (
@@ -200,18 +213,20 @@ def find_xrs_observations_near(
     radius_km: float,
     limit: int | None = None,
     columns=DETAIL_COLUMNS,
+    flare_only: bool = False,
 ) -> list[RowMapping]:
     """Valid XRS observations overlapping the circle of interest (lon, lat, radius_km).
 
     Each row has the observation's columns plus distance_km (from its boresight point to the
     center of the circle) and weight (see the module docstring). Rows come back in descending
-    weight. If supplied, `limit` keeps only the observations that matter most."""
+    weight. If supplied, `limit` keeps only the observations that matter most. With `flare_only`,
+    observations not flagged as taken during a solar flare are left out."""
     with engine.connect() as connection:
         parameters: dict[str, float | int] = {"lon": lon, "lat": lat, "roi_radius_km": radius_km}
         if limit is not None:
             parameters["limit"] = limit
         result = connection.execute(
-            near_observations_statement(columns, limit),
+            near_observations_statement(columns, limit, flare_only),
             parameters,
         ).mappings()
         return result.all()
